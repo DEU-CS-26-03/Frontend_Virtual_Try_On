@@ -3,91 +3,134 @@ import "./App.css";
 
 function App() {
 
-  const [personImage, setPersonImage] = useState(null);
-  const [clothImage, setClothImage] = useState(null);
-  const [resultImage, setResultImage] = useState(null);
+  const [cloth, setCloth] = useState(null);
+  const [person, setPerson] = useState(null);
+  const [result, setResult] = useState(null);
 
-  const handlePersonChange = (e) => {
+  const handleClothUpload = (e) => {
     const file = e.target.files[0];
-    setPersonImage(file);
+    setCloth(file);
   };
 
-  const handleClothChange = (e) => {
+  const handlePersonUpload = (e) => {
     const file = e.target.files[0];
-    setClothImage(file);
+    setPerson(file);
   };
 
   const handleTryOn = async () => {
 
-    if (!personImage || !clothImage) {
-      alert("사람 이미지와 옷 이미지를 업로드하세요");
+    if (!cloth || !person) {
+      alert("이미지를 모두 업로드하세요");
       return;
     }
 
     const formData = new FormData();
-    formData.append("person", personImage);
-    formData.append("cloth", clothImage);
+    formData.append("cloth", cloth);
+    formData.append("person", person);
 
     try {
-      const response = await fetch("http://localhost:8080/api/fitting/tryon", {
-        method: "POST",
-        body: formData
-      });
+
+      const response = await fetch(
+        "http://localhost:8080/api/fitting/tryon",
+        {
+          method: "POST",
+          body: formData
+        }
+      );
 
       const blob = await response.blob();
-      const imageUrl = URL.createObjectURL(blob);
-      setResultImage(imageUrl);
+      setResult(URL.createObjectURL(blob));
 
     } catch (error) {
+
       console.error(error);
-      alert("가상 피팅 실패");
+      alert("AI 피팅 실패");
+
     }
   };
 
   return (
+
     <div className="container">
 
-      <h1>Virtual Fitting</h1>
+      <h1 className="title">✨ 가상 피팅 서비스</h1>
+      <p className="subtitle">AI 기반 가상 피팅으로 옷을 입어보세요</p>
+
+      <div className="steps">
+
+        <div className="step">1 옷 사진 업로드</div>
+        <div className="arrow">→</div>
+        <div className="step">2 내 사진 업로드</div>
+        <div className="arrow">→</div>
+        <div className="step">3 AI 피팅</div>
+        <div className="arrow">→</div>
+        <div className="step">4 결과 확인</div>
+
+      </div>
 
       <div className="upload-section">
 
-        <div>
-          <h3>사람 이미지</h3>
-          <input type="file" onChange={handlePersonChange} />
+        <div className="card">
 
-          {personImage && (
-            <img
-              src={URL.createObjectURL(personImage)}
-              alt="person"
-              width="250"
-            />
-          )}
+          <h3>1. 옷 사진 업로드</h3>
+          <p>입어보고 싶은 상의 사진을 업로드하세요</p>
+
+          <label className="upload-box">
+
+            <input type="file" onChange={handleClothUpload} />
+
+            {cloth ? (
+              <img src={URL.createObjectURL(cloth)} alt="cloth"/>
+            ) : (
+              <div className="upload-text">
+                클릭하거나 이미지를 드래그하세요
+                <br/>
+                PNG, JPG 지원
+              </div>
+            )}
+
+          </label>
+
         </div>
 
-        <div>
-          <h3>옷 이미지</h3>
-          <input type="file" onChange={handleClothChange} />
+        <div className="card">
 
-          {clothImage && (
-            <img
-              src={URL.createObjectURL(clothImage)}
-              alt="cloth"
-              width="250"
-            />
-          )}
+          <h3>2. 내 사진 업로드</h3>
+          <p>상반신이 보이는 정면 사진을 업로드하세요</p>
+
+          <label className="upload-box">
+
+            <input type="file" onChange={handlePersonUpload} />
+
+            {person ? (
+              <img src={URL.createObjectURL(person)} alt="person"/>
+            ) : (
+              <div className="upload-text">
+                클릭하거나 이미지를 드래그하세요
+                <br/>
+                PNG, JPG 지원
+              </div>
+            )}
+
+          </label>
+
         </div>
 
       </div>
 
-      <button onClick={handleTryOn} className="tryon-btn">
-        가상 피팅 실행
+      <button className="tryon-btn" onClick={handleTryOn}>
+        AI 피팅 실행
       </button>
 
-      {resultImage && (
+      {result && (
+
         <div className="result">
+
           <h2>피팅 결과</h2>
-          <img src={resultImage} alt="result" width="400" />
+          <img src={result} alt="result"/>
+
         </div>
+
       )}
 
     </div>
