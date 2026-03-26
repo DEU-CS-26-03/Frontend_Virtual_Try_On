@@ -1,70 +1,84 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import UploadBox from "../components/upload/UploadBox";
+import { uploadUserImage } from "../api/userImageApi";
 
 const Fitting = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
   const cloth = location.state?.cloth;
-  const [image, setImage] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
 
-  const handleImageChange = (file: File) => {
-    const url = URL.createObjectURL(file);
-    setImage(url);
-  };
+  const handleNext = async () => {
+    if (!file) return alert("이미지를 업로드해주세요.");
 
-  const handleNext = () => {
-    if (!image) return;
+    try {
+      const res = await uploadUserImage(file);
 
-    // 👉 결과 페이지로 이동
-    navigate("/result", {
-      state: {
-        cloth,
-        userImage: image,
-      },
-    });
+      navigate("/result", {
+        state: {
+          cloth,
+          userImage: res.file_url,
+        },
+      });
+    } catch (err) {
+      console.error(err);
+      alert("업로드 실패");
+    }
   };
 
   if (!cloth) return <div>잘못된 접근입니다.</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50">
 
-      <h1 className="text-2xl font-bold text-center mb-8">
-        가상 피팅
-      </h1>
+      {/* 🔥 상단 구분 영역 */}
+      <div className="w-full border-b border-gray-200 bg-white py-8 mb-10">
+        <h1 className="text-3xl font-semibold text-center">
+          가상 피팅
+        </h1>
+        <p className="text-gray-400 text-sm text-center mt-2">
+          모델 이미지를 업로드하고 결과를 확인하세요
+        </p>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* 🔥 메인 */}
+      <div className="w-full max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 px-6">
 
-        {/* 좌측 */}
-        <div className="bg-white p-6 rounded-2xl shadow flex flex-col gap-4">
-          <h2 className="font-semibold text-lg">모델 이미지 업로드</h2>
+        {/* 업로드 */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col h-[500px]">
+          <p className="text-sm font-medium mb-4">모델 이미지</p>
 
-          <UploadBox onChange={handleImageChange} />
+          <div className="flex-1 flex items-center justify-center border border-dashed border-gray-300 rounded-xl overflow-hidden bg-gray-50">
+            {!file ? (
+              <UploadBox onChange={setFile} />
+            ) : (
+              <img
+                src={URL.createObjectURL(file)}
+                className="w-full h-full object-cover"
+              />
+            )}
+          </div>
         </div>
 
-        {/* 우측 */}
-        <div className="bg-white p-6 rounded-2xl shadow flex flex-col gap-4">
-          <h2 className="font-semibold text-lg">선택한 의류</h2>
+        {/* 의류 */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col h-[500px]">
+          <p className="text-sm font-medium mb-4">선택한 의류</p>
 
-          <img
-            src={cloth}
-            className="w-full h-80 object-cover rounded-xl"
-          />
+          <div className="flex-1 rounded-xl overflow-hidden bg-gray-50">
+            <img
+              src={cloth}
+              className="w-full h-full object-cover"
+            />
+          </div>
         </div>
 
       </div>
 
-      {/* 중앙 버튼 */}
-      <div className="flex justify-center mt-8">
-        <button
-          onClick={handleNext}
-          disabled={!image}
-          className={`px-10 py-3 rounded-xl text-white font-semibold
-          ${image ? "bg-black hover:bg-gray-800" : "bg-gray-300"}
-          `}
-        >
+      {/* 버튼 */}
+      <div className="flex justify-center mt-12">
+        <button onClick={handleNext} className="px-12 py-4 rounded-xl bg-black text-white">
           가상 피팅 시작
         </button>
       </div>
