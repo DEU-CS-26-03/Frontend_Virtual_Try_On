@@ -15,9 +15,5 @@ const ClothingItem = ({ image }: { image: string }) => {
     />
   );
 };
-<<<<<<< HEAD
 
 export default ClothingItem;
-=======
-export default ClothingItem;
->>>>>>> aad0bc7938f5938a8d61fc67743f5a02564e4a49
