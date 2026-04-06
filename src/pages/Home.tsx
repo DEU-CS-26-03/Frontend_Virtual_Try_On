@@ -17,12 +17,43 @@ const Home = () => {
       } catch (err) { console.error(err); }
       --------------------------------------------------------- */
 
-      // ✅ UI 테스트용 시뮬레이션 데이터
+      // UI 테스트용 데이터
       const mockData = [
-        { garment_id: "gar_01", file_url: "https://picsum.photos/seed/1/400/550", category: "top" },
-        { garment_id: "gar_02", file_url: "https://picsum.photos/seed/2/400/550", category: "top" },
-        { garment_id: "gar_03", file_url: "https://picsum.photos/seed/3/400/550", category: "bottom" },
-        { garment_id: "gar_04", file_url: "https://picsum.photos/seed/4/400/550", category: "outer" },
+        {
+          garment_id: "gar_top_01",
+          file_url: "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=400&h=550&auto=format&fit=crop", 
+          category: "top",
+          name: "Classic White Cotton Tee",
+          price: "₩29,000"
+        },
+        {
+          garment_id: "gar_top_02",
+          file_url: "https://images.unsplash.com/photo-1536766768598-e09213fdcf22?q=80&w=400&h=550&auto=format&fit=crop",
+          category: "top",
+          name: "Essential Black Hoodie",
+          price: "₩59,000"
+        },
+        {
+          garment_id: "gar_bottom_01",
+          file_url: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=400&h=550&auto=format&fit=crop",
+          category: "bottom",
+          name: "Premium Straight Denim",
+          price: "₩79,000"
+        },
+        {
+          garment_id: "gar_outer_01",
+          file_url: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=400&h=550&auto=format&fit=crop",
+          category: "outer",
+          name: "Modern Trench Coat",
+          price: "₩129,000"
+        },
+        {
+          garment_id: "gar_outer_02",
+          file_url: "https://images.unsplash.com/photo-1551028719-00167b16eac5?q=80&w=400&h=550&auto=format&fit=crop",
+          category: "outer",
+          name: "Classic Leather Jacket",
+          price: "₩199,000"
+        }
       ];
       
       const filtered = category === "all" ? mockData : mockData.filter(d => d.category === category);
