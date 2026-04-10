@@ -1,22 +1,44 @@
 import { API_ROUTES } from "./client";
 
-export const createTryOn = async (userImageId: string, garmentId: string) => {
-  /* [실제 구현부]
-  const res = await fetch(API_ROUTES.TRYONS, {
+export const createTryOnJob = async () => {
+  const res = await fetch(`${API_ROUTES.TRYONS}/jobs`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_image_id: userImageId, garment_id: garmentId }),
   });
-  return res.json();
-  */
-  return { tryon_id: "mock_tryon_789" };
+
+  if (!res.ok) throw new Error(`Job 생성 실패: ${res.status}`);
+  return res.json(); 
 };
 
-export const getTryOnStatus = async (tryonId: string) => {
-  /* [실제 구현부]
-  const res = await fetch(`${API_ROUTES.TRYONS}/${tryonId}`);
+export const uploadToStorage = async (presignedUrl: string, file: File) => {
+  const res = await fetch(presignedUrl, {
+    method: "PUT",
+    body: file,
+    headers: {
+      "Content-Type": file.type, // 파일의 실제 MIME 타입 (image/jpeg 등)
+    },
+  });
+
+  if (!res.ok) throw new Error(`스토리지 업로드 실패: ${res.status}`);
+  return true;
+};
+
+export const startInference = async (jobId: string) => {
+  const res = await fetch(`${API_ROUTES.TRYONS}/jobs/${jobId}/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) throw new Error(`추론 시작 요청 실패: ${res.status}`);
   return res.json();
-  */
-  // 시뮬레이션을 위해 "완료" 상태 바로 반환
-  return { status: "COMPLETED", result_image_url: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800" };
+};
+
+export const getJobStatus = async (jobId: string) => {
+  const res = await fetch(`${API_ROUTES.TRYONS}/jobs/${jobId}`, {
+    method: "GET",
+    headers: { "Accept": "application/json" },
+  });
+
+  if (!res.ok) throw new Error(`상태 조회 실패: ${res.status}`);
+  return res.json(); 
 };

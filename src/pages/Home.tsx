@@ -11,7 +11,6 @@ const Home = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // 실제 API 호출 (내부적으로 더미 반환 중)
         const data = await getGarments({ category });
         setClothingData(data);
       } catch (err) {
