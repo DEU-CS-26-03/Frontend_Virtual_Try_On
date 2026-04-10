@@ -1,50 +1,42 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Star, Download, RotateCcw, ShoppingBag, Camera, ThumbsUp, ThumbsDown } from "lucide-react";
-// UI 확인 위해 주석처리
-// import { createTryOn, getTryOnStatus } from "../api/tryonApi"; 
+import { createTryOn, getTryOnStatus } from "../api/tryonApi";
 
 const ResultPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
   const { garmentId, cloth, preview, userImageId } = location.state || {};
-  
+
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusText, setStatusText] = useState("AI 피팅 요청 중...");
   const [rating, setRating] = useState(0);
   const [showRec, setShowRec] = useState(false);
-  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!preview) {
-      navigate("/");
-      return;
-    }
+    const fetchResult = async () => {
+      if (!userImageId || !garmentId) return;
 
-    // 나중에 연동 시 startFittingProcess()로 변경
-    const simulateUI = () => {
-      setLoading(true);
-      setStatusText("이미지를 분석하고 있습니다...");
+      try {
+        // 1. 피팅 생성 요청
+        const tryonRes = await createTryOn(userImageId, garmentId);
+        setStatusText("스타일 분석 및 합성 중...");
 
-      // 1.5초 후 상태 메시지 변경 테스트
-      setTimeout(() => setStatusText("AI가 옷을 입히는 중입니다... (85%)"), 1500);
-
-      // 3초 후 결과 화면 출력 테스트
-      pollTimer.current = setTimeout(() => {
-        // 테스트용 랜덤 이미지
-        setResultImage("https://picsum.photos/seed/fitting_res/800/1200"); 
-        setLoading(false);
-      }, 3000);
+        // 2. 상태 체크 폴링 (더미 시뮬레이션: 2.5초 대기)
+        setTimeout(async () => {
+          const statusRes = await getTryOnStatus(tryonRes.tryon_id);
+          setResultImage(statusRes.result_image_url);
+          setLoading(false);
+        }, 2500);
+      } catch (err) {
+        setStatusText("오류가 발생했습니다.");
+        console.error(err);
+      }
     };
 
-    simulateUI();
-
-    return () => {
-      if (pollTimer.current) clearTimeout(pollTimer.current);
-    };
-  }, [preview, navigate]);
+    fetchResult();
+  }, [userImageId, garmentId]);
 
   const handleDownload = () => {
     if (!resultImage) return;
@@ -56,10 +48,9 @@ const ResultPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans text-gray-900">
-      {/* 헤더 */}
       <div className="w-full border-b border-gray-200 bg-white py-6 mb-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <h1 className="text-3xl font-black tracking-tight italic">가상 피팅 결과</h1>
+          <h1 className="text-3xl font-black tracking-tight italic uppercase">Fitting Result</h1>
           <div className="flex gap-3">
             <button onClick={() => navigate(-1)} className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold shadow-sm hover:bg-gray-50 transition-all">
               <Camera size={18} /> 사진 교체
@@ -71,30 +62,29 @@ const ResultPage = () => {
         </div>
       </div>
 
-      {/* 메인 이미지 영역 */}
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 px-6 mb-16">
-        {/* 원본 (Before) */}
+        {/* BEFORE */}
         <div className="bg-white p-4 rounded-[2.5rem] shadow-sm border border-gray-100">
-          <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-3 text-center">원본</p>
+          <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-3 text-center">Original Photo</p>
           <div className="relative w-full h-[650px] bg-gray-100 rounded-[1.8rem] overflow-hidden">
             <img src={preview} className="w-full h-full object-cover" alt="Before" />
-            <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md text-white px-4 py-1 rounded-full text-xs font-bold">BEFORE</div>
+            <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md text-white px-4 py-1 rounded-full text-xs font-bold uppercase">Before</div>
           </div>
         </div>
 
-        {/* 결과 (After) */}
+        {/* AFTER */}
         <div className="bg-white p-4 rounded-[2.5rem] shadow-sm border border-gray-100 relative">
-          <p className="text-[10px] font-black tracking-widest text-blue-500 uppercase mb-3 text-center">가상 피팅 결과</p>
+          <p className="text-[10px] font-black tracking-widest text-blue-500 uppercase mb-3 text-center">Virtual Fitting Result</p>
           <div className="relative w-full h-[650px] bg-gray-100 rounded-[1.8rem] overflow-hidden flex items-center justify-center">
             {loading ? (
               <div className="text-center space-y-4">
                 <div className="w-12 h-12 border-4 border-gray-100 border-t-black rounded-full animate-spin mx-auto" />
-                <p className="text-sm font-bold text-gray-400">{statusText}</p>
+                <p className="text-sm font-bold text-gray-400 animate-pulse">{statusText}</p>
               </div>
             ) : (
               <>
-                <img src={resultImage!} className="w-full h-full object-cover animate-fadeIn" alt="After" />
-                <div className="absolute top-4 left-4 bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg">AFTER</div>
+                <img src={resultImage!} className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-700" alt="After" />
+                <div className="absolute top-4 left-4 bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg uppercase tracking-wider">After</div>
                 <button onClick={handleDownload} className="absolute bottom-6 right-6 p-5 bg-black text-white rounded-2xl shadow-xl hover:scale-110 active:scale-95 transition-all">
                   <Download size={22} />
                 </button>
@@ -104,9 +94,9 @@ const ResultPage = () => {
         </div>
       </div>
 
-      {/* 하단 만족도 영역 (loading이 끝나면 등장) */}
+      {/* 만족도 및 추천 섹션 */}
       {!loading && (
-        <div className="max-w-4xl mx-auto px-6 animate-slideUp">
+        <div className="max-w-4xl mx-auto px-6">
           <div className="bg-white py-12 px-8 rounded-[3rem] shadow-2xl border border-gray-100 text-center">
             <h2 className="text-2xl font-black mb-8">스타일링이 마음에 드시나요?</h2>
             <div className="flex justify-center gap-4 mb-10">
@@ -122,16 +112,15 @@ const ResultPage = () => {
             </div>
           </div>
 
-          {/* 추천 아이템 섹션 */}
           {showRec && (
-            <div className="mt-20 pb-10 animate-fadeIn">
+            <div className="mt-20 pb-10 animate-in fade-in slide-in-from-bottom-5 duration-700">
               <div className="flex items-center gap-3 mb-8">
                 <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><ShoppingBag size={24} /></div>
-                <h3 className="text-2xl font-black tracking-tight">이런 옷은 어떠세요?</h3>
+                <h3 className="text-2xl font-black tracking-tight">추천 코디 아이템</h3>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="aspect-[3/4] bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden group cursor-pointer">
+                  <div key={i} className="aspect-[3/4] bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden group cursor-pointer hover:shadow-lg transition-all">
                     <img src={`https://picsum.photos/seed/rec${i}/300/400`} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                   </div>
                 ))}

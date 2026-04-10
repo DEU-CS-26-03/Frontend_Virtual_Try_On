@@ -1,9 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Zap, ChevronLeft } from "lucide-react"; // AI 느낌을 주는 아이콘 추가
+import { Zap, ChevronLeft } from "lucide-react";
 import UploadBox from "../components/upload/UploadBox";
 import UploadButton from "../components/upload/UploadButton";
-// import { uploadUserImage } from "../api/userImageApi"; // 실제 연동 시 주석 해제
+import { uploadUserImage } from "../api/userImageApi";
 
 const Fitting = () => {
   const location = useLocation();
@@ -13,20 +13,27 @@ const Fitting = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // 메모리 누수 방지를 위해 URL 객체 생성 로직 최적화
   const userPreviewUrl = useMemo(() => {
     return file ? URL.createObjectURL(file) : null;
   }, [file]);
+
+  // 메모리 누수 방지
+  useEffect(() => {
+    return () => {
+      if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl);
+    };
+  }, [userPreviewUrl]);
 
   const handleNext = async () => {
     if (!file || !garmentId) return alert("사진을 먼저 업로드해주세요.");
     
     setIsUploading(true);
 
-    /* ---------------------------------------------------------
-       실제 백엔드 연동 로직 (필요시 해제)
     try {
+      // 실제 구현부: 서버에 이미지 업로드 후 ID 받아오기
       const res = await uploadUserImage(file);
+      
+      // 다음 페이지로 이동 (중요: userImageId를 넘겨야 함)
       navigate("/result", { 
         state: { 
           userImageId: res.image_id, 
@@ -36,55 +43,24 @@ const Fitting = () => {
         } 
       });
     } catch (err) { 
-      alert("업로드 실패"); 
+      alert("이미지 처리 중 오류가 발생했습니다."); 
       setIsUploading(false);
     }
-    --------------------------------------------------------- */
-
-    // UI 테스트용 시뮬레이션
-    setTimeout(() => {
-      setIsUploading(false);
-      navigate("/result", { 
-        state: { 
-          userImageId: "mock_user_123",
-          preview: userPreviewUrl,
-          cloth,
-          garmentId 
-        } 
-      });
-    }, 1200);
   };
 
   return (
     <div className="relative min-h-screen bg-gray-50 pb-20 font-sans">
-      
-      {/* ✨ [신규] 우측 상단 미니 프리뷰 (사용자 사진 + 옷 조합) */}
+      {/* AI Preview 미니 플로팅 창 */}
       {userPreviewUrl && cloth && (
-        <div className="fixed top-24 right-10 z-50 w-52 animate-bounceIn hidden lg:block">
+        <div className="fixed top-24 right-10 z-50 w-52 hidden lg:block animate-in fade-in slide-in-from-right-10 duration-500">
           <div className="bg-white/70 backdrop-blur-2xl p-4 rounded-[2.5rem] shadow-2xl border border-white/50 ring-1 ring-black/5">
             <p className="text-[10px] font-black tracking-widest text-blue-600 uppercase mb-3 text-center flex items-center justify-center gap-1">
               <Zap size={12} fill="currentColor" className="animate-pulse" /> AI Preview
             </p>
-            
             <div className="relative aspect-[3/4] rounded-[1.8rem] overflow-hidden bg-gray-200 shadow-inner">
-              {/* 배경: 사용자 사진 (반투명 처리) */}
-              <img 
-                src={userPreviewUrl} 
-                className="w-full h-full object-cover opacity-50 grayscale-[30%]" 
-                alt="User base" 
-              />
-              
-              {/* 오버레이: 선택한 옷 (중앙에 배치하여 합성 느낌 암시) */}
+              <img src={userPreviewUrl} className="w-full h-full object-cover opacity-50 grayscale-[30%]" alt="User base" />
               <div className="absolute inset-0 flex items-center justify-center p-6">
-                <img 
-                  src={cloth} 
-                  className="w-full h-auto object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.4)] animate-pulse" 
-                  alt="Cloth overlay" 
-                />
-              </div>
-
-              <div className="absolute bottom-0 w-full bg-blue-600/80 backdrop-blur-md py-2 text-[9px] text-center font-bold text-white tracking-tight">
-                COMPOSITION ANALYZING...
+                <img src={cloth} className="w-full h-auto object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.4)] animate-pulse" alt="Cloth overlay" />
               </div>
             </div>
           </div>
@@ -100,12 +76,12 @@ const Fitting = () => {
       </div>
 
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 px-6">
-        {/* Step 1. 사진 업로드 영역 */}
+        {/* Step 1. 내 사진 */}
         <div className="flex flex-col">
           <p className="text-sm font-black mb-4 text-gray-400 uppercase tracking-widest text-center">Step 1. Your Photo</p>
-          <div className="h-[550px] bg-white rounded-[2.5rem] border-2 border-dashed border-gray-200 flex items-center justify-center shadow-sm overflow-hidden relative group transition-all hover:border-black/20">
+          <div className="h-[550px] bg-white rounded-[2.5rem] border-2 border-dashed border-gray-200 flex items-center justify-center shadow-sm overflow-hidden relative group hover:border-black/20 transition-all">
             {userPreviewUrl ? (
-              <img src={userPreviewUrl} className="w-full h-full object-contain p-6 animate-fadeIn" alt="Preview" />
+              <img src={userPreviewUrl} className="w-full h-full object-cover p-2" alt="Preview" />
             ) : (
               <UploadBox />
             )}
@@ -115,42 +91,33 @@ const Fitting = () => {
           </div>
         </div>
 
-        {/* Step 2. 선택된 옷 영역 */}
+        {/* Step 2. 선택한 옷 */}
         <div className="flex flex-col">
           <p className="text-sm font-black mb-4 text-gray-400 uppercase tracking-widest text-center">Step 2. Selected Item</p>
           <div className="h-[550px] bg-white rounded-[2.5rem] border border-gray-100 flex items-center justify-center p-10 shadow-sm">
             {cloth ? (
               <img src={cloth} className="max-w-full max-h-full object-contain drop-shadow-md" alt="Selected" />
             ) : (
-              <div className="text-center">
-                <p className="text-gray-300 italic mb-4">선택된 옷이 없습니다.</p>
-                <button onClick={() => navigate("/")} className="text-blue-600 font-bold underline">옷 고르러 가기</button>
-              </div>
+              <p className="text-gray-300 italic">선택된 옷이 없습니다.</p>
             )}
           </div>
           <div className="mt-8">
-            <button onClick={() => navigate("/")} className="w-full py-5 bg-white border border-gray-200 rounded-2xl font-bold hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm">
+            <button onClick={() => navigate("/")} className="w-full py-5 bg-white border border-gray-200 rounded-2xl font-bold hover:bg-gray-50 transition-all">
               다른 옷 골라보기
             </button>
           </div>
         </div>
       </div>
 
-      {/* 하단 시작 버튼 */}
       <div className="flex justify-center mt-20">
         <button 
           onClick={handleNext} 
           disabled={!file || isUploading}
           className={`px-32 py-6 rounded-[2rem] text-2xl font-black shadow-2xl transition-all duration-300 ${
-            !file || isUploading ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-black text-white hover:scale-105 active:scale-95 hover:shadow-black/20"
+            !file || isUploading ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-black text-white hover:scale-105"
           }`}
         >
-          {isUploading ? (
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 border-4 border-gray-400 border-t-white rounded-full animate-spin" />
-              처리 중...
-            </div>
-          ) : "가상 피팅 시작"}
+          {isUploading ? "AI 합성 엔진 가동 중..." : "가상 피팅 시작"}
         </button>
       </div>
     </div>
