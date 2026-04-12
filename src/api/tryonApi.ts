@@ -29,16 +29,6 @@ export const uploadToStorage = async (presignedUrl: string, file: File) => {
   return true;
 };
 
-export const startInference = async (jobId: string) => {
-  const res = await fetch(`${API_ROUTES.TRYONS}/${jobId}/start`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
-
-  if (!res.ok) throw new Error(`추론 시작 요청 실패: ${res.status}`);
-  return res.json();
-};
-
 export const getJobStatus = async (jobId: string) => {
   const res = await fetch(`${API_ROUTES.TRYONS}/${jobId}`, {
     method: "GET",
@@ -46,15 +36,5 @@ export const getJobStatus = async (jobId: string) => {
   });
 
   if (!res.ok) throw new Error(`상태 조회 실패: ${res.status}`);
-  return res.json();
-};
-
-export const getTryOnResult = async (jobId: string) => {
-  const res = await fetch(`${API_ROUTES.TRYONS}/${jobId}/result`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-  });
-
-  if (!res.ok) throw new Error(`결과 조회 실패: ${res.status}`);
   return res.json();
 };
