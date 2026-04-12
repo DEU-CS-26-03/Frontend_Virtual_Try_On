@@ -1,11 +1,6 @@
 import { API_ROUTES } from "./client";
-export type CreateTryOnJobRequest = {
-  garmentId: string | number;
-  fileName: string;
-  contentType: string;
-};
 
-export const createTryOnJob = async (data: CreateTryOnJobRequest) => {
+export const createTryOnJob = async (data: any) => {
   const res = await fetch(API_ROUTES.TRYONS, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Star, Download, RotateCcw, Camera } from "lucide-react";
-import { createTryOnJob, uploadToStorage, startInference, getJobStatus } from "../api/tryonApi";
+import { createTryOnJob, uploadToStorage,  getJobStatus } from "../api/tryonApi";
 import Header from "../components/layout/Header";
 
 const ResultPage = () => {
@@ -24,7 +24,7 @@ const ResultPage = () => {
     document.body.removeChild(link);
   };
   const pollTimerRef = useRef<number | undefined>(undefined);
-  
+
 
   useEffect(() => {
     const runFittingWorkflow = async () => {
@@ -37,11 +37,9 @@ const ResultPage = () => {
         setLoading(true);
         const { jobId, uploadUrls } = await createTryOnJob({
           garmentId,
-          fileName: userFile.name,
-          contentType: userFile.type,
+          userImageId: "temp"
         });
         await uploadToStorage(uploadUrls.person, userFile);
-        await startInference(jobId);
 
         pollTimerRef.current = window.setInterval(async () => {
           try {
@@ -76,7 +74,7 @@ const ResultPage = () => {
   return (
     <div className="min-h-screen bg-[#F5F5F3] pb-32 font-sans text-[#111111]">
       <Header />
-      
+
       {/* 1. 상단 타이틀 */}
       <div className="max-w-[1600px] mx-auto px-10 pt-16 pb-12 flex justify-between items-end">
         <h1 className="text-6xl font-[1000] tracking-tighter leading-none uppercase">
@@ -135,13 +133,13 @@ const ResultPage = () => {
           <div className="bg-[#111111] py-20 px-10 rounded-[4rem] shadow-2xl text-center text-white relative overflow-hidden">
             <span className="text-[11px] font-[1000] tracking-[0.5em] text-[#2563EB] uppercase mb-6 block">Feedback</span>
             <h2 className="text-4xl font-[1000] mb-12 tracking-tighter uppercase font-sans">결과가 마음에 드시나요?</h2>
-            
+
             <div className="flex justify-center gap-6 mb-16">
               {[1, 2, 3, 4, 5].map((idx) => (
                 <button key={idx} onClick={() => { setRating(idx); setShowRec(true); }} className="transition-transform hover:scale-125">
-                  <Star 
-                    size={52} 
-                    className={`transition-all duration-300 ${idx <= rating ? "fill-[#2563EB] text-[#2563EB]" : "text-gray-800"}`} 
+                  <Star
+                    size={52}
+                    className={`transition-all duration-300 ${idx <= rating ? "fill-[#2563EB] text-[#2563EB]" : "text-gray-800"}`}
                     strokeWidth={idx <= rating ? 0 : 1.5}
                   />
                 </button>
@@ -166,7 +164,7 @@ const ResultPage = () => {
                 <h3 className="text-4xl font-[1000] tracking-tighter uppercase font-sans">당신을 위한 추천 아이템</h3>
                 <p className="text-gray-400 font-bold text-[10px] tracking-widest uppercase mt-2">Recommended for you</p>
               </div>
-              
+
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-10">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="group cursor-pointer text-left">
