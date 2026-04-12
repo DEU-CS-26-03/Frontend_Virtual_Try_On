@@ -1,15 +1,18 @@
-export const BASE_URL = "/api";
+export const BASE_URL = "/api/v1";
 
 export const API_ROUTES = {
-  AUTH: `${BASE_URL}/auth`,
-  ME: `${BASE_URL}/me`,
-  USERS: `${BASE_URL}/users`,
-  USER_IMAGES: `${BASE_URL}/users-images`,
-  GARMENTS: `${BASE_URL}/garments`,
-  SEARCH_GARMENT: `${BASE_URL}/search/garment`,
-  RECOMMENDATIONS: `${BASE_URL}/recommendations`,
+  AUTH: `/api/auth`,
+  ME: `/api/me`,
+  USERS: `/api/users`,
+  USER_IMAGES: `/api/users-images`,
+  GARMENTS: `/api/garments`,
+  SEARCH_GARMENT: `/api/search/garment`,
+  RECOMMENDATIONS: `/api/recommendations`,
   TRYONS: `${BASE_URL}/tryons`,
-  RESULTS: `${BASE_URL}/results`,
-  FAVORITES: `${BASE_URL}/favorites`,
-  HISTORIES: `${BASE_URL}/histories`,
+  RESULTS: `${BASE_URL}/tryons`,
+  FAVORITES: `/api/favorites`,
+  HISTORIES: `/api/histories`,
 };
+
+console.log("BASE_URL =", BASE_URL);
+console.log("TRYONS =", API_ROUTES.TRYONS);

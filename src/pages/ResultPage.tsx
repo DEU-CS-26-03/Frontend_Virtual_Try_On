@@ -35,7 +35,11 @@ const ResultPage = () => {
 
       try {
         setLoading(true);
-        const { jobId, uploadUrls } = await createTryOnJob();
+        const { jobId, uploadUrls } = await createTryOnJob({
+          garmentId,
+          fileName: userFile.name,
+          contentType: userFile.type,
+        });
         await uploadToStorage(uploadUrls.person, userFile);
         await startInference(jobId);
 
