@@ -12,6 +12,13 @@ const Header = () => {
       navigate("/history");
     }
   };
+  
+  const handleLogout = () => {
+    if (window.confirm("로그아웃 하시겠습니까?")) {
+      localStorage.removeItem("accessToken"); // 주머니에서 입장권 삭제
+      window.location.href = "/"; // 메인으로 튕겨내기
+    }
+  };
 
   return (
     <header className="w-full bg-[#F5F5F3] sticky top-0 z-[100]">
