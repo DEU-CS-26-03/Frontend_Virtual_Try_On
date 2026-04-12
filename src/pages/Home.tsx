@@ -22,6 +22,20 @@ const Home = () => {
     "아우터": "outer"
   };
 
+  const handleFittingClick = (item: any) => {
+  const token = localStorage.getItem('accessToken');
+    if (!token) {
+      if (window.confirm("로그인이 필요한 서비스입니다. 로그인 페이지로 이동하시겠습니까?")) {
+        navigate('/login');
+      }
+      return;
+    }
+    // 로그인 상태라면 피팅 페이지로 아이템 정보 전달
+    navigate("/fitting", { 
+      state: { cloth: item.file_url, garmentId: item.garment_id } 
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F5F3] font-sans text-[#111111]">
       <Header />
@@ -66,9 +80,7 @@ const Home = () => {
             <div
               key={item.garment_id}
               className="group cursor-pointer"
-              onClick={() => navigate("/fitting", { 
-                state: { cloth: item.file_url, garmentId: item.garment_id } 
-              })}
+              onClick={() => handleFittingClick(item)} 
             >
               {/* 이미지 영역 */}
               <div className="relative aspect-[3/4] overflow-hidden bg-white rounded-sm">
