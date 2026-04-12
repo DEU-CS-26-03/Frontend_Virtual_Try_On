@@ -1,6 +1,6 @@
 import { API_ROUTES } from "./client";
 
-export const createTryOnJob = async (data: any) => {
+export const createTryOnJob = async (data: unknown) => {
   const res = await fetch(API_ROUTES.TRYONS, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
