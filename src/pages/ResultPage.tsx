@@ -57,10 +57,13 @@ const ResultPage = () => {
             } else {
               setStatusText(`스타일 합성 중... (${res.status})`);
             }
-          } catch (pollError) { console.error(pollError); }
+          } catch (pollError: unknown) {
+            console.error("polling error:", pollError);
+          }
         }, 3000);
 
-      } catch (err: any) {
+      } catch (err: unknown) {
+        console.error("runFittingWorkflow error:", err);
         setLoading(false);
         setStatusText("오류가 발생했습니다.");
       }
