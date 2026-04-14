@@ -9,19 +9,28 @@ const LoginPage = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-        // 함수 호출도 loginUser로 변경
-        const data = await loginUser({ email, password }); 
 
-        if (data.accessToken) {
+    // 테스트 계정 체크
+    if (email === "capstone@gmail.com" && password === "1234") {
+      localStorage.setItem("accessToken", "capstone-test-token");
+      alert("로그인 성공!");
+      window.location.href = "/"; 
+      return;
+    }
+
+    // 서버가 켜져 있을 때만 작동
+    try {
+      const data = await loginUser({ email, password }); 
+
+      if (data.accessToken) {
         localStorage.setItem("accessToken", data.accessToken);
         alert("로그인 성공!");
         window.location.href = "/"; 
-        }
+      }
     } catch (error) {
-        alert("로그인 정보가 올바르지 않습니다.");
+    alert("아이디 또는 비밀번호가 틀렸습니다. (테스트 계정을 이용해 보세요)");
     }
-    };
+  };
 
   return (
     <div className="min-h-screen bg-[#F5F5F3] flex items-center justify-center px-10">

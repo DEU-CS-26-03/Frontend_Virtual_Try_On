@@ -41,13 +41,18 @@ const Home = () => {
 
   const handleFittingClick = (item: any) => {
     const token = localStorage.getItem('accessToken');
-    if (!token) {
-      if (window.confirm("로그인이 필요한 서비스입니다. 로그인 페이지로 이동하시겠습니까?")) {
-        navigate('/login');
-      }
-      return;
-    }
-    navigate("/fitting", { state: { cloth: item.file_url, garmentId: item.garment_id } });
+    
+    // 로그인을 안 했어도 차단하지 않고 바로 페이지 이동
+    // state를 통해 현재 로그인 여부(isGuest)를 피팅 페이지에 알려줌
+    navigate("/fitting", { 
+      state: { 
+        cloth: item.file_url, 
+        garmentId: item.garment_id,
+        name: item.name,      // 옷 이름도 넘겨주면 피팅 페이지에서 보여주기 좋습니다.
+        price: item.price,
+        isGuest: !token       // 토큰이 없으면 true (게스트 상태)
+      } 
+    });
   };
 
   return (
@@ -82,7 +87,6 @@ const Home = () => {
                 {banner.sub}
               </p>
 
-              {/* [추가] 지금 시착하기 버튼 (스크롤 유도) */}
               <button 
                 onClick={() => window.scrollTo({ top: 800, behavior: 'smooth' })}
                 className="group flex items-center gap-4 bg-white text-black px-8 py-4 rounded-full font-black text-sm tracking-widest hover:bg-[#2563EB] hover:text-white transition-all shadow-2xl"
