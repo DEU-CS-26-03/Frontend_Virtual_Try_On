@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RagisterPage";
 import Fitting from "./pages/fitting";
 import ResultPage from "./pages/ResultPage";
+import HistoryPage from "./pages/HistoryPage";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/fitting" element={<Fitting />} />
         <Route path="/result" element={<ResultPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/History" element={<HistoryPage />} />
       </Routes>
     </BrowserRouter>
   );
