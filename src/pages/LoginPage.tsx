@@ -4,33 +4,38 @@ import { loginUser } from "../api/auth";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+    const handleLogin = async (e: React.FormEvent) => {
+      e.preventDefault();
 
-    // 테스트 계정 체크
-    if (email === "capstone@gmail.com" && password === "1234") {
-      localStorage.setItem("accessToken", "capstone-test-token");
-      alert("로그인 성공!");
-      window.location.href = "/"; 
-      return;
-    }
-
-    // 서버가 켜져 있을 때만 작동
-    try {
-      const data = await loginUser({ email, password }); 
-
-      if (data.accessToken) {
-        localStorage.setItem("accessToken", data.accessToken);
-        alert("로그인 성공!");
+      // 테스트 계정 체크
+      if (email === "capstone@gmail.com" && password === "1234") {
+        localStorage.setItem("accessToken", "capstone-test-token");
+        alert("테스트 계정으로 로그인되었습니다.");
         window.location.href = "/"; 
+        return;
       }
-    } catch (error) {
-    alert("아이디 또는 비밀번호가 틀렸습니다. (테스트 계정을 이용해 보세요)");
-    }
-  };
+
+      try {
+        // 이제 loginUser는 내부에서 "/api/v1/auth/login"을 호출
+        const data = await loginUser({ email, password }); 
+
+        if (data.accessToken) {
+          localStorage.setItem("accessToken", data.accessToken);
+          alert("로그인 성공!");
+          window.location.href = "/"; 
+        } else {
+          // 백엔드에서 에러 메시지를 줄 경우 처리
+          alert(data.message || "로그인 정보가 올바르지 않습니다.");
+        }
+      } catch (error) {
+        // 서버가 꺼져있거나 통신 에러가 날 경우
+        console.error("Login Error:", error);
+        alert("현재 서버와 통신할 수 없습니다. 테스트 계정을 사용해 주세요.");
+      }
+    };
 
   return (
     <div className="min-h-screen bg-[#F5F5F3] flex items-center justify-center px-10">

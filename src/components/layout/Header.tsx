@@ -1,9 +1,41 @@
+import { useEffect, useState } from "react"; // [추가] useEffect, useState
 import { useNavigate } from "react-router-dom";
-import { User, Globe, Menu, LogOut } from "lucide-react"; // LogOut 아이콘 추가
+import { User, Globe, Menu, LogOut } from "lucide-react";
+import { getMyInfo } from "../../api/auth";
+
+// [추가] 유저 정보 타입 정의
+interface UserInfo {
+  name: string;
+  email: string;
+}
 
 const Header = () => {
   const navigate = useNavigate();
-  const isLoggedIn = !!localStorage.getItem("accessToken");
+  const token = localStorage.getItem("accessToken");
+  const isLoggedIn = !!token;
+
+  // [추가] 유저 정보를 담을 상태
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+
+  // [추가] 컴포넌트 마운트 시 유저 정보 가져오기
+  useEffect(() => {
+    if (isLoggedIn) {
+      getMyInfo()
+        .then((data:any) => {
+          // 성공 시 유저 정보 저장
+          setUserInfo(data);
+        })
+        .catch((error: any) => {
+          console.error("인증 실패:", error);
+
+          if (error.status === 401) {
+            alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+            localStorage.removeItem("accessToken");
+            window.location.href = "/login";
+          }
+        });
+    }
+  }, [isLoggedIn]); // 로그인 상태가 변할 때마다 실행
 
   const handleUserClick = () => {
     if (!isLoggedIn) {
@@ -16,7 +48,8 @@ const Header = () => {
   const handleLogout = () => {
     if (window.confirm("로그아웃 하시겠습니까?")) {
       localStorage.removeItem("accessToken");
-      window.location.href = "/"; // 상태 초기화를 위해 새로고침하며 메인으로
+      setUserInfo(null); // 상태 초기화
+      window.location.href = "/";
     }
   };
 
@@ -24,7 +57,7 @@ const Header = () => {
     <header className="w-full bg-[#F5F5F3] sticky top-0 z-[100] border-b border-gray-100">
       <div className="max-w-[1600px] mx-auto px-10 h-24 flex items-center justify-between">
         
-        {/* 로고 */}
+        {/* 로고 영역 */}
         <div 
           onClick={() => navigate("/")} 
           className="flex items-center gap-3 cursor-pointer group"
@@ -33,7 +66,7 @@ const Header = () => {
             <div className="w-4 h-4 bg-[#111111] rounded-full group-hover:bg-white" />
           </div>
           <span className="text-2xl font-[1000] tracking-tighter text-[#111111]">
-            가상 피팅(Try-on)
+            VIRTUAL TRY-ON
           </span>
         </div>
 
@@ -45,7 +78,6 @@ const Header = () => {
               onClick={(e) => {
                 e.preventDefault();
                 if (menu === "VIRTUAL FITTING") navigate("/fitting");
-                // MY 대신 MY HISTORY로 이름을 바꾸고 로그인 체크 적용
                 if (menu === "MY HISTORY") handleUserClick();
               }}
               className={`text-[12px] font-black tracking-[0.2em] transition-colors ${
@@ -57,14 +89,19 @@ const Header = () => {
           ))}
         </nav>
 
-        {/* 아이콘 및 로그인/로그아웃 영역 */}
+        {/* 아이콘 및 유저 영역 */}
         <div className="flex items-center gap-7 text-[#111111]">
-          {/* 지구본 아이콘 (언어설정 등) */}
+          {/* [추가] 로그인했을 때 유저 이름 표시 */}
+          {isLoggedIn && userInfo && (
+            <span className="text-[10px] font-bold text-[#111111] bg-white px-3 py-1 rounded-full border border-gray-200">
+              {userInfo.name}님
+            </span>
+          )}
+
           <button className="hover:scale-110 transition-transform">
             <Globe size={22} strokeWidth={2} />
           </button>
           
-          {/* 유저 아이콘 (클릭 시 로그인 또는 히스토리 이동) */}
           <button 
             onClick={handleUserClick}
             className="group flex items-center gap-2 hover:text-[#2563EB] transition-colors"
@@ -75,7 +112,6 @@ const Header = () => {
             </span>
           </button>
 
-          {/* [추가] 로그인 상태일 때만 로그아웃 버튼 표시 */}
           {isLoggedIn && (
             <button 
               onClick={handleLogout}
