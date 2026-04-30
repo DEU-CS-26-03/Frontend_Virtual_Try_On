@@ -1,19 +1,47 @@
-import { API_ROUTES } from "./client";
+// src/api/favoriteApi.ts
+import { apiRequest, API_ROUTES } from "./client";
 
-export const getFavorites = async () => {
-  const res = await fetch(API_ROUTES.FAVORITES);
-  return res.json();
-};
+interface FavoriteWire {
+  id: string | number;
+  garmentid: string;
+  createdat?: string;
+  garmentimageurl?: string;
+  garmentcategory?: string;
+}
 
-export const addFavorite = async (garmentId: number) => {
-  const res = await fetch(API_ROUTES.FAVORITES, {
+export interface FavoriteItem {
+  id: string | number;
+  garmentId: string;
+  createdAt?: string;
+  garmentImageUrl?: string;
+  garmentCategory?: string;
+}
+
+function fromFavoriteWire(data: FavoriteWire): FavoriteItem {
+  return {
+    id: data.id,
+    garmentId: data.garmentid,
+    createdAt: data.createdat,
+    garmentImageUrl: data.garmentimageurl,
+    garmentCategory: data.garmentcategory,
+  };
+}
+
+export async function getFavorites(): Promise<FavoriteItem[]> {
+  const data = await apiRequest<FavoriteWire[]>(API_ROUTES.FAVORITES);
+  return data.map(fromFavoriteWire);
+}
+
+export async function addFavorite(garmentId: string | number): Promise<FavoriteItem> {
+  const data = await apiRequest<FavoriteWire>(API_ROUTES.FAVORITES, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ garmentId }),
+    body: JSON.stringify({ garmentid: String(garmentId) }),
   });
-  return res.json();
-};
+  return fromFavoriteWire(data);
+}
 
-export const deleteFavorite = async (garmentId: number) => {
-  await fetch(`${API_ROUTES.FAVORITES}/${garmentId}`, { method: "DELETE" });
-};
+export async function deleteFavorite(garmentId: string | number): Promise<void> {
+  await apiRequest<void>(`${API_ROUTES.FAVORITES}/${garmentId}`, {
+    method: "DELETE",
+  });
+}

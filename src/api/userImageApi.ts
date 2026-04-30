@@ -1,14 +1,52 @@
-import { API_ROUTES } from "./client";
+// src/api/userImageApi.ts
+import { apiRequest, API_ROUTES } from "./client";
 
-export const uploadUserImage = async (file: File) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("view", "front");
+export type UserImageView = "FRONT" | "BACK";
 
-  const res = await fetch(API_ROUTES.USER_IMAGES, {
+interface UserImageWire {
+  id: string;
+  fileUrl: string;
+  objectKey: string;
+  view: UserImageView;
+  createdAt?: string;
+}
+
+export interface UserImage {
+  id: string;
+  fileUrl: string;
+  objectKey: string;
+  view: UserImageView;
+  createdAt?: string;
+}
+
+function fromUserImageWire(data: UserImageWire): UserImage {
+  return {
+    id: data.id,
+    fileUrl: data.fileUrl,
+    objectKey: data.objectKey,
+    view: data.view,
+    createdAt: data.createdAt,
+  };
+}
+
+export async function createUserImage(params: {
+  fileUrl: string;
+  objectKey: string;
+  view: UserImageView;
+}): Promise<UserImage> {
+  const data = await apiRequest<UserImageWire>(API_ROUTES.USER_IMAGES, {
     method: "POST",
-    body: formData,
+    body: JSON.stringify({
+      fileUrl: params.fileUrl,
+      objectKey: params.objectKey,
+      view: params.view,
+    }),
   });
-  if (!res.ok) throw new Error("이미지 업로드 실패");
-  return res.json();
-};
+
+  return fromUserImageWire(data);
+}
+
+export async function getUserImage(imageId: string): Promise<UserImage> {
+  const data = await apiRequest<UserImageWire>(`${API_ROUTES.USER_IMAGES}/${imageId}`);
+  return fromUserImageWire(data);
+}

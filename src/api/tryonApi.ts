@@ -1,35 +1,122 @@
-import { API_ROUTES } from "./client";
+// src/api/tryonApi.ts
+import { apiRequest, API_ROUTES } from "./client";
 
-export const createTryOnJob = async (data: unknown) => {
-  const res = await fetch(API_ROUTES.TRYONS, {
+export type TryonStatus = "queued" | "processing" | "completed" | "failed";
+
+export interface TryonError {
+  code: string;
+  message: string;
+}
+
+interface TryonWire {
+  tryonid?: string;
+  tryonId?: string;
+
+  status?: string;
+  progress?: number;
+
+  userimageid?: string;
+  userImageId?: string;
+
+  garmentid?: string;
+  garmentId?: string;
+
+  resultid?: string;
+  resultId?: string;
+
+  resultimageurl?: string;
+  resultImageUrl?: string;
+
+  message?: string;
+  error?: TryonError;
+
+  createdat?: string;
+  createdAt?: string;
+
+  updatedat?: string;
+  updatedAt?: string;
+}
+
+export interface TryonJob {
+  tryonId: string;
+  status: TryonStatus;
+  progress: number;
+  userImageId?: string;
+  garmentId?: string;
+  resultId?: string;
+  resultImageUrl?: string;
+  message?: string;
+  error?: TryonError;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateTryonParams {
+  userImageId: string;
+  garmentId?: string;
+  externalItemKey?: string;
+}
+
+function normalizeStatus(status?: string): TryonStatus {
+  const value = String(status || "").toLowerCase();
+
+  if (value === "queued") return "queued";
+  if (value === "processing") return "processing";
+  if (value === "completed") return "completed";
+  if (value === "failed") return "failed";
+
+  return "queued";
+}
+
+function fromTryonWire(data: TryonWire): TryonJob {
+  return {
+    tryonId: String(data.tryonid ?? data.tryonId ?? ""),
+    status: normalizeStatus(data.status),
+    progress: Number(data.progress ?? 0),
+    userImageId: data.userimageid ?? data.userImageId,
+    garmentId: data.garmentid ?? data.garmentId,
+    resultId: data.resultid ?? data.resultId,
+    resultImageUrl: data.resultimageurl ?? data.resultImageUrl,
+    message: data.message,
+    error: data.error,
+    createdAt: data.createdat ?? data.createdAt,
+    updatedAt: data.updatedat ?? data.updatedAt,
+  };
+}
+
+export async function createTryon(params: CreateTryonParams): Promise<TryonJob> {
+  if (!params.garmentId && !params.externalItemKey) {
+    throw new Error("garmentId 또는 externalItemKey 중 하나는 필요합니다.");
+  }
+
+  const data = await apiRequest<TryonWire>(API_ROUTES.TRYONS, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      userimageid: params.userImageId,
+      garmentid: params.garmentId,
+      externalitemkey: params.externalItemKey,
+    }),
   });
 
-  if (!res.ok) throw new Error(`Job 생성 실패: ${res.status}`);
-  return res.json();
-};
+  return fromTryonWire(data);
+}
 
-export const uploadToStorage = async (presignedUrl: string, file: File) => {
-  const res = await fetch(presignedUrl, {
-    method: "PUT",
-    body: file,
-    headers: {
-      "Content-Type": file.type,
-    },
+export async function getTryon(tryonId: string): Promise<TryonJob> {
+  const data = await apiRequest<TryonWire>(`${API_ROUTES.TRYONS}/${tryonId}`);
+  return fromTryonWire(data);
+}
+
+export async function getTryonList(): Promise<TryonJob[]> {
+  const data = await apiRequest<TryonWire[]>(API_ROUTES.TRYONS);
+  return data.map(fromTryonWire);
+}
+
+export async function deleteTryon(tryonId: string): Promise<void> {
+  await apiRequest<void>(`${API_ROUTES.TRYONS}/${tryonId}`, {
+    method: "DELETE",
   });
+}
 
-  if (!res.ok) throw new Error(`스토리지 업로드 실패: ${res.status}`);
-  return true;
-};
-
-export const getJobStatus = async (jobId: string) => {
-  const res = await fetch(`${API_ROUTES.TRYONS}/${jobId}`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-  });
-
-  if (!res.ok) throw new Error(`상태 조회 실패: ${res.status}`);
-  return res.json();
-};
+/* 페이지에서 쓰는 이름 그대로 alias export */
+export const createTryonJob = createTryon;
+export const getTryonStatus = getTryon;

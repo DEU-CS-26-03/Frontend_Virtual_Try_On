@@ -1,204 +1,198 @@
-import { useState, useEffect, useRef } from "react";
+// src/pages/Home.tsx
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
-import { ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import FavoriteButton from "../components/favorite/FavoriteButton";
+import { createImagePresign, uploadByToken } from "../api/uploadApi";
+import { createGarment, getGarments, type GarmentItem } from "../api/garmentApi";
 
-const BANNER_DATA = [
-  { 
-    id: 1, 
-    title: "상상하던 스타일, 실시간 AI 가상 피팅으로 확인하세요", 
-    sub: "모델에게 옷을 입히듯, 당신의 사진 위에 새로운 스타일을 즉시 얹어보세요.", 
-    img: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=1600",
-    tag: "AI VIRTUAL TRY-ON" 
-  },
-  { 
-    id: 2, 
-    title: "클릭 한 번으로 완성되는 나만의 가상 드레스룸", 
-    sub: "복잡한 시착 과정 없이 원하는 옷을 고르고 즉시 피팅 결과를 확인하세요.", 
-    img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600",
-    tag: "SMART FITTING"
-  },
-];
-
-const MOCK_DATA = [
-  { garment_id: 1, name: "프리미엄 GTR 그래픽 티셔츠", category: "상의", file_url: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=600", price: "₩35,000" },
-  { garment_id: 2, name: "스트릿 데님 자켓", category: "아우터", file_url: "https://images.unsplash.com/photo-1576872381149-78ef78736748?auto=format&fit=crop&q=80&w=600", price: "₩89,000" },
-  { garment_id: 3, name: "카고 오버 팬츠", category: "하의", file_url: "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&q=80&w=600", price: "₩54,000" },
-  { garment_id: 4, name: "미니멀리스트 윈드브레이커", category: "아우터", file_url: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&q=80&w=600", price: "₩120,000" },
-];
+const categories = ["all", "top", "bottom", "outer"];
 
 const Home = () => {
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [category, setCategory] = useState("전체");
-  const [currentBanner, setCurrentBanner] = useState(0);
 
-  // 배너 자동 전환
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % BANNER_DATA.length);
-    }, 8000);
-    return () => clearInterval(timer);
-  }, []);
+  const [category, setCategory] = useState("all");
+  const [garments, setGarments] = useState<GarmentItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // 로컬 파일 업로드 핸들러
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const localImageUrl = URL.createObjectURL(file);
-      const newGarment = {
-        garment_id: Date.now(),
-        name: "사용자 업로드 의상",
-        category: "CUSTOM",
-        file_url: localImageUrl,
-        price: "N/A"
-      };
-      handleFittingClick(newGarment);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadCategory, setUploadCategory] = useState("top");
+  const [brandName, setBrandName] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  const loadGarments = async (selectedCategory = "all") => {
+    try {
+      setLoading(true);
+      const data = await getGarments(selectedCategory);
+      setGarments(data);
+    } catch (error) {
+      console.error("의류 목록 조회 실패:", error);
+      alert("의류 목록을 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 피팅 페이지 이동
-  const handleFittingClick = (item: any) => {
-    const token = localStorage.getItem('accessToken');
-    navigate("/fitting", { 
-      state: { 
-        cloth: item.file_url, 
-        garmentId: item.garment_id,
-        name: item.name,
-        price: item.price,
-        isGuest: !token 
-      } 
+  useEffect(() => {
+    loadGarments(category);
+  }, [category]);
+
+  const filteredGarments = useMemo(() => {
+    if (category === "all") return garments;
+    return garments.filter((item) => item.category === category);
+  }, [category, garments]);
+
+  const handleRegisterGarment = async () => {
+    if (!uploadFile) {
+      alert("업로드할 의류 이미지를 선택해주세요.");
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      const presign = await createImagePresign();
+      const uploaded = await uploadByToken(presign.uploadToken, uploadFile);
+
+      await createGarment({
+        fileUrl: uploaded.fileUrl,
+        category: uploadCategory,
+        brandName: brandName.trim(),
+      });
+
+      alert("의류 등록이 완료되었습니다.");
+      setUploadFile(null);
+      setBrandName("");
+      setUploadCategory("top");
+      await loadGarments(category);
+    } catch (error) {
+      console.error("의류 등록 실패:", error);
+      alert("의류 등록에 실패했습니다.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSelectGarment = (item: GarmentItem) => {
+    navigate("/fitting", {
+      state: {
+        cloth: item.fileUrl,
+        garmentId: item.id,
+      },
     });
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F3] font-sans text-[#111111]">
-      <Header />
-      
-      {/* 히어로 슬라이더 */}
-      <div className="relative w-full h-[700px] overflow-hidden bg-black">
-        {BANNER_DATA.map((banner, index) => (
-          <div
-            key={banner.id}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              index === currentBanner ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
-            <img src={banner.img} className="w-full h-full object-cover opacity-80" alt="Banner" />
-            
-            <div className="absolute bottom-24 left-20 z-20 max-w-4xl text-white">
-              <div className="inline-block px-4 py-1.5 bg-[#2563EB] text-[10px] font-black tracking-[0.2em] mb-6 rounded-full">
-                {banner.tag}
-              </div>
-              <h1 className="text-6xl font-[1000] tracking-tighter leading-[1.15] mb-8 break-keep">
-                {banner.title}
-              </h1>
-              <p className="text-xl font-medium opacity-70 max-w-2xl mb-10">{banner.sub}</p>
-              <button 
-                onClick={() => window.scrollTo({ top: 800, behavior: 'smooth' })}
-                className="group flex items-center gap-4 bg-white text-black px-8 py-4 rounded-full font-black text-sm tracking-widest hover:bg-[#2563EB] hover:text-white transition-all shadow-2xl"
+      <div className="min-h-screen bg-[#F5F5F3]">
+        <Header />
+
+        <div className="max-w-7xl mx-auto px-6 py-10">
+          <div className="mb-14">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tight text-[#111111]">
+              Virtual Try-On
+            </h1>
+            <p className="mt-3 text-gray-500 font-medium">
+              의류를 선택하거나 직접 등록해서 피팅을 시작하세요.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 mb-14">
+            <h2 className="text-xl font-black mb-6">로컬 의상 등록</h2>
+
+            <div className="grid md:grid-cols-4 gap-4">
+              <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                  className="block w-full rounded-xl border border-gray-200 px-4 py-3 bg-white"
+              />
+
+              <select
+                  value={uploadCategory}
+                  onChange={(e) => setUploadCategory(e.target.value)}
+                  className="rounded-xl border border-gray-200 px-4 py-3 bg-white"
               >
-                지금 시작하기
-                <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                <option value="top">TOP</option>
+                <option value="bottom">BOTTOM</option>
+                <option value="outer">OUTER</option>
+              </select>
+
+              <input
+                  type="text"
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                  placeholder="브랜드명 (선택)"
+                  className="rounded-xl border border-gray-200 px-4 py-3"
+              />
+
+              <button
+                  onClick={handleRegisterGarment}
+                  disabled={uploading}
+                  className="rounded-xl bg-[#111111] text-white font-bold px-6 py-3 hover:bg-gray-800 disabled:bg-gray-300"
+              >
+                {uploading ? "등록 중..." : "의류 등록"}
               </button>
             </div>
-          </div>
-        ))}
 
-        {/* 슬라이더 컨트롤 */}
-        <div className="absolute bottom-24 right-20 flex items-center gap-6 z-30">
-          <div className="flex items-baseline gap-1 text-white">
-            <span className="text-3xl font-[1000]">{currentBanner + 1}</span>
-            <span className="text-lg font-bold opacity-30">/ {BANNER_DATA.length}</span>
+            {uploadFile && (
+                <p className="mt-4 text-sm text-gray-500">
+                  선택 파일: {uploadFile.name}
+                </p>
+            )}
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => setCurrentBanner((prev) => (prev - 1 + BANNER_DATA.length) % BANNER_DATA.length)} className="p-4 rounded-full border border-white/20 text-white hover:bg-white/10 backdrop-blur-md transition-all"><ChevronLeft size={20} /></button>
-            <button onClick={() => setCurrentBanner((prev) => (prev + 1) % BANNER_DATA.length)} className="p-4 rounded-full border border-white/20 text-white hover:bg-white/10 backdrop-blur-md transition-all"><ChevronRight size={20} /></button>
-          </div>
-        </div>
-      </div>
 
-      <div className="max-w-[1600px] mx-auto px-10 mt-20">
-        {/* 카테고리 & 업로드 버튼 영역 */}
-        <div className="flex justify-between items-center mb-16 border-b border-gray-200 py-4">
-          <div className="flex gap-10">
-            {["전체", "상의", "하의", "아우터"].map((c) => (
-              <button
-                key={c}
-                onClick={() => setCategory(c)}
-                className={`text-sm font-black tracking-tight transition-all relative ${category === c ? "text-[#111111]" : "text-gray-300"}`}
-              >
-                {c}
-                {category === c && <div className="absolute -bottom-4 left-0 w-full h-[3px] bg-[#111111]" />}
-              </button>
+          <div className="flex justify-center gap-3 mb-12 flex-wrap">
+            {categories.map((c) => (
+                <button
+                    key={c}
+                    onClick={() => setCategory(c)}
+                    className={`px-6 py-3 rounded-full text-sm font-black transition-all ${
+                        category === c
+                            ? "bg-black text-white shadow-xl scale-105"
+                            : "bg-white text-gray-400 border border-gray-100 hover:bg-gray-50"
+                    }`}
+                >
+                  {c.toUpperCase()}
+                </button>
             ))}
           </div>
 
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 bg-[#111111] text-white px-6 py-3 rounded-full font-black text-[11px] tracking-widest hover:bg-[#2563EB] transition-all shadow-lg"
-          >
-            <Upload size={16} /> 로컬 의상 업로드
-          </button>
-          <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-        </div>
-
-        {/* 의류 그리드 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12 pb-32">
-          {/* 상품 리스트 */}
-          {MOCK_DATA
-            .filter(item => category === "전체" || item.category === category)
-            .map((item) => (
-            <div 
-              key={item.garment_id} 
-              className="group cursor-pointer flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500"
-              onClick={() => handleFittingClick(item)}
-            >
-              <div className="relative aspect-[3/4] overflow-hidden bg-[#F9F9F9]">
-                <img src={item.file_url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={item.name} />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-6">
-                  <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-300 w-full">
-                    <button className="w-full bg-white text-black py-4 rounded-full font-black text-xs tracking-[0.2em] hover:bg-[#2563EB] hover:text-white transition-colors">
-                      TRY ON NOW
-                    </button>
-                  </div>
-                </div>
+          {loading ? (
+              <div className="py-20 text-center text-gray-400 font-bold">
+                상품 목록을 불러오는 중입니다.
               </div>
-
-              <div className="p-8 flex flex-col justify-between flex-grow">
-                <div>
-                  <p className="text-[10px] font-black text-[#2563EB] tracking-widest uppercase mb-2">{item.category}</p>
-                  <h3 className="font-bold text-lg text-[#111111] leading-tight line-clamp-1 group-hover:text-[#2563EB] transition-colors">
-                    {item.name}
-                  </h3>
-                </div>
-                <div className="mt-6 pt-6 border-t border-gray-50 flex justify-between items-center">
-                  <span className="text-xs font-medium text-gray-400">PRICE</span>
-                  <span className="text-xl font-[1000] text-[#111111]">{item.price}</span>
-                </div>
+          ) : filteredGarments.length === 0 ? (
+              <div className="py-20 text-center text-gray-400 font-bold border-2 border-dashed border-gray-200 rounded-3xl bg-white">
+                등록된 의류가 없습니다.
               </div>
-            </div>
-          ))}
-          
-          {/* 로컬 추가 전용 카드 */}
-            <div 
-            onClick={() => fileInputRef.current?.click()}
-            className="group cursor-pointer flex flex-col bg-white border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden hover:border-[#2563EB] transition-all duration-300"
-          >
-            <div className="aspect-[3/4] bg-gray-50 flex flex-col items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm group-hover:bg-[#2563EB] group-hover:text-white transition-all mb-4">
-                <Upload size={28} strokeWidth={1.5} />
+          ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                {filteredGarments.map((item) => (
+                    <div
+                        key={item.id}
+                        onClick={() => handleSelectGarment(item)}
+                        className="relative rounded-[2rem] overflow-hidden cursor-pointer group transition-all duration-500 bg-white border border-gray-100 hover:shadow-2xl"
+                    >
+                      <FavoriteButton garmentId={item.id} />
+                      <img
+                          src={item.fileUrl}
+                          alt={item.brandName || "garment"}
+                          className="w-full h-[420px] object-cover group-hover:scale-105 transition-transform duration-700"
+                      />
+                      <div className="p-4">
+                        <p className="text-[11px] font-black tracking-widest text-gray-400 uppercase">
+                          {item.category}
+                        </p>
+                        <h3 className="text-base font-bold text-[#111111] mt-1">
+                          {item.brandName || "등록 의상"}
+                        </h3>
+                      </div>
+                    </div>
+                ))}
               </div>
-              <p className="text-sm font-bold text-gray-400 group-hover:text-[#2563EB]">파일 선택하기</p>
-            </div>
-            <div className="p-8 bg-white/50 text-center">
-              <h3 className="font-bold text-gray-400">내 옷으로 시착하기</h3>
-            </div>
-          </div>
+          )}
         </div>
       </div>
-    </div>
   );
 };
 
