@@ -1,6 +1,6 @@
 // src/hooks/useTryonPipeline.ts
 import { useState, useRef, useCallback } from "react";
-import { createTryon, getTryon, type TryonJob, TryonStatus } from "../api/tryonApi";
+import { createTryon, getTryon, type TryonJob,} from "../api/tryonApi";
 
 interface PipelineState {
     status: "idle" | "submitting" | "polling" | "done" | "error";
@@ -77,7 +77,7 @@ export function useTryonPipeline() {
                 setState({
                     status: "error",
                     job: null,
-                    errorMessage: String(e),
+                    errorMessage: String(e),s
                 });
             }
         },

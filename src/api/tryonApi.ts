@@ -1,3 +1,4 @@
+
 // src/api/tryonApi.ts
 import { apiRequest, API_ROUTES } from "./client";
 
@@ -6,6 +7,12 @@ export type TryonStatus = "queued" | "processing" | "completed" | "failed";
 export interface TryonError {
   code: string;
   message: string;
+}
+
+export interface CreateTryonParams {
+  userImageId: string;
+  garmentId?: string;       // 선택적 필드
+  externalItemKey?: string;  // 선택적 필드
 }
 
 interface TryonWire {
@@ -52,6 +59,7 @@ export interface TryonJob {
 }
 
 export async function createTryon(params: CreateTryonParams): Promise<TryonJob> {
+  // 이제 params의 타입을 정상적으로 인식합니다.
   if (!params.garmentId && !params.externalItemKey) {
     throw new Error("garmentId 또는 externalItemKey 중 하나는 필요합니다.");
   }
@@ -59,15 +67,15 @@ export async function createTryon(params: CreateTryonParams): Promise<TryonJob> 
   const data = await apiRequest<TryonWire>(API_ROUTES.TRYONS, {
     method: "POST",
     body: JSON.stringify({
-      // ★ 수정: Spring @RequestBody는 camelCase로 역직렬화
       userImageId:    params.userImageId,
       garmentId:      params.garmentId,
-      externalItemId: params.externalItemKey,  // Spring DTO 필드명과 일치
+      externalItemId: params.externalItemKey,
     }),
   });
 
   return fromTryonWire(data);
 }
+
 function normalizeStatus(status?: string): TryonStatus {
   const value = String(status || "").toLowerCase();
 
@@ -95,22 +103,7 @@ function fromTryonWire(data: TryonWire): TryonJob {
   };
 }
 
-export async function createTryon(params: CreateTryonParams): Promise<TryonJob> {
-  if (!params.garmentId && !params.externalItemKey) {
-    throw new Error("garmentId 또는 externalItemKey 중 하나는 필요합니다.");
-  }
 
-  const data = await apiRequest<TryonWire>(API_ROUTES.TRYONS, {
-    method: "POST",
-    body: JSON.stringify({
-      userimageid: params.userImageId,
-      garmentid: params.garmentId,
-      externalitemkey: params.externalItemKey,
-    }),
-  });
-
-  return fromTryonWire(data);
-}
 
 export async function getTryon(tryonId: string): Promise<TryonJob> {
   const data = await apiRequest<TryonWire>(`${API_ROUTES.TRYONS}/${tryonId}`);
