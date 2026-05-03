@@ -77,7 +77,7 @@ export function useTryonPipeline() {
                 setState({
                     status: "error",
                     job: null,
-                    errorMessage: String(e),s
+                    errorMessage: String(e),
                 });
             }
         },
