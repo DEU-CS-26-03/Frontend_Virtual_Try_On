@@ -1,10 +1,11 @@
 // src/hooks/useTryonPipeline.ts
 import { useState, useRef, useCallback } from "react";
-import { createTryon, getTryon, type TryonJob,} from "../api/tryonApi";
+import { createTryon, getTryon, type TryonJob } from "../api/tryonApi";
 
 interface PipelineState {
     status: "idle" | "submitting" | "polling" | "done" | "error";
     job: TryonJob | null;
+    resultImageUrl: string | null | undefined; // undefined 허용하도록 수정
     errorMessage: string | null;
 }
 
@@ -15,6 +16,7 @@ export function useTryonPipeline() {
     const [state, setState] = useState<PipelineState>({
         status: "idle",
         job: null,
+        resultImageUrl: null,
         errorMessage: null,
     });
     const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -31,7 +33,6 @@ export function useTryonPipeline() {
         pollTimer.current = setTimeout(async () => {
             pollCount.current += 1;
 
-            // 타임아웃 처리
             if (pollCount.current > MAX_POLL_COUNT) {
                 setState(s => ({ ...s, status: "error", errorMessage: "추론 시간 초과 (5분)" }));
                 stopPolling();
@@ -40,20 +41,28 @@ export function useTryonPipeline() {
 
             try {
                 const job = await getTryon(tryonId);
-                setState(s => ({ ...s, job }));
+                
+                // 에러 메시지에서 지적한 대로 타입을 안전하게 처리
+                const currentStatus = String(job.status).toUpperCase();
 
-                if (job.status === "completed") {
-                    setState(s => ({ ...s, status: "done" }));
+                if (currentStatus === "COMPLETED") {
+                    setState(s => ({ 
+                        ...s, 
+                        status: "done", 
+                        job: job, // job 업데이트 추가
+                        resultImageUrl: job.resultImageUrl // string | undefined를 허용함
+                    }));
                     stopPolling();
-                } else if (job.status === "failed") {
+                } else if (currentStatus === "FAILED") {
                     setState(s => ({
                         ...s,
                         status: "error",
+                        job: job,
                         errorMessage: job.error?.message ?? "추론 실패",
                     }));
                     stopPolling();
                 } else {
-                    // queued / processing — 계속 폴링
+                    setState(s => ({ ...s, job }));
                     poll(tryonId);
                 }
             } catch (e) {
@@ -67,17 +76,18 @@ export function useTryonPipeline() {
         async (userImageId: string, garmentId: string) => {
             stopPolling();
             pollCount.current = 0;
-            setState({ status: "submitting", job: null, errorMessage: null });
+            setState({ status: "submitting", job: null, resultImageUrl: null, errorMessage: null });
 
             try {
                 const job = await createTryon({ userImageId, garmentId });
-                setState({ status: "polling", job, errorMessage: null });
+                setState({ status: "polling", job, resultImageUrl: null, errorMessage: null });
                 poll(job.tryonId);
             } catch (e) {
                 setState({
                     status: "error",
                     job: null,
-                    errorMessage: String(e),s
+                    resultImageUrl: null,
+                    errorMessage: String(e),
                 });
             }
         },
@@ -86,7 +96,7 @@ export function useTryonPipeline() {
 
     const reset = useCallback(() => {
         stopPolling();
-        setState({ status: "idle", job: null, errorMessage: null });
+        setState({ status: "idle", job: null, resultImageUrl: null, errorMessage: null });
     }, [stopPolling]);
 
     return { ...state, run, reset };
