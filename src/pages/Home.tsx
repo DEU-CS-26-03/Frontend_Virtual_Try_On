@@ -1,32 +1,80 @@
 // src/pages/Home.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "../components/layout/Header";
-import FavoriteButton from "../components/favorite/FavoriteButton";
 import { createImagePresign, uploadByToken } from "../api/uploadApi";
 import { createGarment, getGarments, type GarmentItem } from "../api/garmentApi";
+import HomePage, { type HomeBanner, type HomeDisplayGarment } from "./HomePage";
 
-const categories = ["all", "top", "bottom", "outer"];
+const BANNER_DATA: HomeBanner[] = [
+  {
+    id: 1,
+    title: "상상하던 스타일, 실시간 AI 가상 피팅으로 확인하세요",
+    sub: "모델에게 옷을 입히듯, 당신의 사진 위에 새로운 스타일을 즉시 얹어보세요.",
+    img: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=1600",
+    tag: "AI VIRTUAL TRY-ON",
+  },
+  {
+    id: 2,
+    title: "클릭 한 번으로 완성되는 나만의 가상 드레스룸",
+    sub: "복잡한 시착 과정 없이 원하는 옷을 고르고 즉시 피팅 결과를 확인하세요.",
+    img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600",
+    tag: "SMART FITTING",
+  },
+];
+
+const UI_CATEGORIES = [
+  { label: "전체", value: "all" },
+  { label: "상의", value: "top" },
+  { label: "하의", value: "bottom" },
+  { label: "아우터", value: "outer" },
+] as const;
+
+const CATEGORY_LABEL_MAP: Record<string, string> = {
+  all: "전체",
+  top: "상의",
+  bottom: "하의",
+  outer: "아우터",
+};
+
+const getApiCategory = (label: string) =>
+    UI_CATEGORIES.find((item) => item.label === label)?.value ?? "all";
+
+const toDisplayGarment = (item: GarmentItem): HomeDisplayGarment => ({
+  garmentId: item.id,
+  name: item.brandName?.trim() || "등록 의상",
+  category: CATEGORY_LABEL_MAP[item.category] || item.category || "기타",
+  fileUrl: item.fileUrl || "",
+  price: "N/A",
+});
 
 const Home = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [category, setCategory] = useState("all");
+  const [category, setCategory] = useState("전체");
+  const [currentBanner, setCurrentBanner] = useState(0);
   const [garments, setGarments] = useState<GarmentItem[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadCategory, setUploadCategory] = useState("top");
-  const [brandName, setBrandName] = useState("");
   const [uploading, setUploading] = useState(false);
 
-  const loadGarments = async (selectedCategory = "all") => {
+  const selectedApiCategory = useMemo(() => getApiCategory(category), [category]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentBanner((prev) => (prev + 1) % BANNER_DATA.length);
+    }, 8000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const loadGarments = async (selectedCategory = selectedApiCategory) => {
     try {
       setLoading(true);
       const data = await getGarments(selectedCategory);
       setGarments(data);
     } catch (error) {
       console.error("의류 목록 조회 실패:", error);
+      setGarments([]);
       alert("의류 목록을 불러오지 못했습니다.");
     } finally {
       setLoading(false);
@@ -34,165 +82,82 @@ const Home = () => {
   };
 
   useEffect(() => {
-    loadGarments(category);
-  }, [category]);
+    void loadGarments(selectedApiCategory);
+  }, [selectedApiCategory]);
 
-  const filteredGarments = useMemo(() => {
-    if (category === "all") return garments;
-    return garments.filter((item) => item.category === category);
-  }, [category, garments]);
+  const displayGarments = useMemo(
+      () => garments.map(toDisplayGarment),
+      [garments]
+  );
 
-  const handleRegisterGarment = async () => {
-    if (!uploadFile) {
-      alert("업로드할 의류 이미지를 선택해주세요.");
-      return;
-    }
+  const handleFittingClick = (item: HomeDisplayGarment) => {
+    const token = localStorage.getItem("accessToken");
+
+    navigate("/fitting", {
+      state: {
+        cloth: item.fileUrl,
+        garmentId: item.garmentId,
+        name: item.name,
+        price: item.price,
+        isGuest: !token,
+      },
+    });
+  };
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const uploadCategory = selectedApiCategory === "all" ? "top" : selectedApiCategory;
+    const brandNameFromFile =
+        file.name.replace(/\.[^.]+$/, "").trim() || "사용자 업로드 의상";
 
     try {
       setUploading(true);
 
       const presign = await createImagePresign();
-      const uploaded = await uploadByToken(presign.uploadToken, uploadFile);
-
-      await createGarment({
+      const uploaded = await uploadByToken(presign.uploadToken, file);
+      const created = await createGarment({
         fileUrl: uploaded.fileUrl,
         category: uploadCategory,
-        brandName: brandName.trim(),
+        brandName: brandNameFromFile,
       });
 
-      alert("의류 등록이 완료되었습니다.");
-      setUploadFile(null);
-      setBrandName("");
-      setUploadCategory("top");
-      await loadGarments(category);
+      await loadGarments(selectedApiCategory);
+      handleFittingClick(toDisplayGarment(created));
     } catch (error) {
-      console.error("의류 등록 실패:", error);
-      alert("의류 등록에 실패했습니다.");
+      console.error("의류 업로드 실패:", error);
+      alert("의류 업로드에 실패했습니다.");
     } finally {
       setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
-  const handleSelectGarment = (item: GarmentItem) => {
-    navigate("/fitting", {
-      state: {
-        cloth: item.fileUrl,
-        garmentId: item.id,
-      },
-    });
-  };
-
   return (
-      <div className="min-h-screen bg-[#F5F5F3]">
-        <Header />
-
-        <div className="max-w-7xl mx-auto px-6 py-10">
-          <div className="mb-14">
-            <h1 className="text-4xl md:text-6xl font-black tracking-tight text-[#111111]">
-              Virtual Try-On
-            </h1>
-            <p className="mt-3 text-gray-500 font-medium">
-              의류를 선택하거나 직접 등록해서 피팅을 시작하세요.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 mb-14">
-            <h2 className="text-xl font-black mb-6">로컬 의상 등록</h2>
-
-            <div className="grid md:grid-cols-4 gap-4">
-              <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                  className="block w-full rounded-xl border border-gray-200 px-4 py-3 bg-white"
-              />
-
-              <select
-                  value={uploadCategory}
-                  onChange={(e) => setUploadCategory(e.target.value)}
-                  className="rounded-xl border border-gray-200 px-4 py-3 bg-white"
-              >
-                <option value="top">TOP</option>
-                <option value="bottom">BOTTOM</option>
-                <option value="outer">OUTER</option>
-              </select>
-
-              <input
-                  type="text"
-                  value={brandName}
-                  onChange={(e) => setBrandName(e.target.value)}
-                  placeholder="브랜드명 (선택)"
-                  className="rounded-xl border border-gray-200 px-4 py-3"
-              />
-
-              <button
-                  onClick={handleRegisterGarment}
-                  disabled={uploading}
-                  className="rounded-xl bg-[#111111] text-white font-bold px-6 py-3 hover:bg-gray-800 disabled:bg-gray-300"
-              >
-                {uploading ? "등록 중..." : "의류 등록"}
-              </button>
-            </div>
-
-            {uploadFile && (
-                <p className="mt-4 text-sm text-gray-500">
-                  선택 파일: {uploadFile.name}
-                </p>
-            )}
-          </div>
-
-          <div className="flex justify-center gap-3 mb-12 flex-wrap">
-            {categories.map((c) => (
-                <button
-                    key={c}
-                    onClick={() => setCategory(c)}
-                    className={`px-6 py-3 rounded-full text-sm font-black transition-all ${
-                        category === c
-                            ? "bg-black text-white shadow-xl scale-105"
-                            : "bg-white text-gray-400 border border-gray-100 hover:bg-gray-50"
-                    }`}
-                >
-                  {c.toUpperCase()}
-                </button>
-            ))}
-          </div>
-
-          {loading ? (
-              <div className="py-20 text-center text-gray-400 font-bold">
-                상품 목록을 불러오는 중입니다.
-              </div>
-          ) : filteredGarments.length === 0 ? (
-              <div className="py-20 text-center text-gray-400 font-bold border-2 border-dashed border-gray-200 rounded-3xl bg-white">
-                등록된 의류가 없습니다.
-              </div>
-          ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                {filteredGarments.map((item) => (
-                    <div
-                        key={item.id}
-                        onClick={() => handleSelectGarment(item)}
-                        className="relative rounded-[2rem] overflow-hidden cursor-pointer group transition-all duration-500 bg-white border border-gray-100 hover:shadow-2xl"
-                    >
-                      <FavoriteButton garmentId={item.id} />
-                      <img
-                          src={item.fileUrl}
-                          alt={item.brandName || "garment"}
-                          className="w-full h-[420px] object-cover group-hover:scale-105 transition-transform duration-700"
-                      />
-                      <div className="p-4">
-                        <p className="text-[11px] font-black tracking-widest text-gray-400 uppercase">
-                          {item.category}
-                        </p>
-                        <h3 className="text-base font-bold text-[#111111] mt-1">
-                          {item.brandName || "등록 의상"}
-                        </h3>
-                      </div>
-                    </div>
-                ))}
-              </div>
-          )}
-        </div>
-      </div>
+      <HomePage
+          banners={BANNER_DATA}
+          currentBanner={currentBanner}
+          onPrevBanner={() =>
+              setCurrentBanner(
+                  (prev) => (prev - 1 + BANNER_DATA.length) % BANNER_DATA.length
+              )
+          }
+          onNextBanner={() =>
+              setCurrentBanner((prev) => (prev + 1) % BANNER_DATA.length)
+          }
+          categories={UI_CATEGORIES.map((item) => item.label)}
+          category={category}
+          setCategory={setCategory}
+          fileInputRef={fileInputRef}
+          handleFileChange={handleFileChange}
+          garments={displayGarments}
+          loading={loading}
+          uploading={uploading}
+          handleFittingClick={handleFittingClick}
+      />
   );
 };
 
