@@ -25,3 +25,13 @@ export const getMyInfo = async (): Promise<MyInfo> => {
     name: data.nickname || data.name || data.username || "USER",
   };
 };
+
+export const registerUser = async (userData: any): Promise<any> => {
+  
+  const REGISTER_URL = API_ROUTES.LOGIN.replace("/login", "/register");
+
+  return await apiRequest(REGISTER_URL, {
+    method: "POST",
+    body: JSON.stringify(userData),
+  });
+};
