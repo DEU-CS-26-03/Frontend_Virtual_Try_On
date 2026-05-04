@@ -1,4 +1,3 @@
-// src/pages/HomePage.tsx
 import type { ChangeEvent, RefObject } from "react";
 import Header from "../components/layout/Header";
 import FavoriteButton from "../components/favorite/FavoriteButton";
@@ -20,14 +19,16 @@ export interface HomeDisplayGarment {
     price: string;
 }
 
+export type HomeCategory = "all" | "top" | "bottom" | "outer";
+
 interface HomePageProps {
     banners: HomeBanner[];
     currentBanner: number;
     onPrevBanner: () => void;
     onNextBanner: () => void;
-    categories: string[];
-    category: string;
-    setCategory: (category: string) => void;
+    categories: readonly HomeCategory[];
+    category: HomeCategory;
+    setCategory: (category: HomeCategory) => void;
     fileInputRef: RefObject<HTMLInputElement | null>;
     handleFileChange: (e: ChangeEvent<HTMLInputElement>) => void | Promise<void>;
     garments: HomeDisplayGarment[];
@@ -210,8 +211,8 @@ const HomePage = ({
                                     <div className="mt-6 pt-6 border-t border-gray-50 flex justify-between items-center">
                                         <span className="text-xs font-medium text-gray-400">PRICE</span>
                                         <span className="text-xl font-[1000] text-[#111111]">
-                      {item.price}
-                    </span>
+                                            {item.price}
+                                        </span>
                                     </div>
                                 </div>
                             </div>

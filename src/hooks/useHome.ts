@@ -1,32 +1,42 @@
-// src/hooks/useHome.ts
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createImagePresign, uploadByToken } from "../api/uploadApi";
-import { createGarment, getGarments, type GarmentItem } from "../api/garmentApi";
+import {
+    createGarment,
+    getGarments,
+    type GarmentItem,
+    type GarmentCategory,
+} from "../api/garmentApi";
 
 export const CATEGORIES = ["all", "top", "bottom", "outer"] as const;
+type HomeCategory = "all" | GarmentCategory;
+type UploadCategory = "top" | "bottom" | "outer";
 
 export function useHome() {
     const navigate = useNavigate();
 
     // 목록 상태
-    const [category, setCategory] = useState("all");
+    const [category, setCategory] = useState<HomeCategory>("all");
     const [garments, setGarments] = useState<GarmentItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     // 업로드 상태
     const [uploadFile, setUploadFile] = useState<File | null>(null);
-    const [uploadCategory, setUploadCategory] = useState("top");
+    const [uploadCategory, setUploadCategory] = useState<UploadCategory>("top");
     const [brandName, setBrandName] = useState("");
     const [uploading, setUploading] = useState(false);
 
     // ── API: 의류 목록 조회 ──────────────────────────────────
-    const loadGarments = async (selectedCategory = "all") => {
+    const loadGarments = async (selectedCategory: HomeCategory = "all") => {
         try {
             setLoading(true);
             setError(null);
-            const data = await getGarments(selectedCategory);
+
+            const data = await getGarments(
+                selectedCategory === "all" ? undefined : selectedCategory
+            );
+
             setGarments(data);
         } catch (err) {
             console.error("의류 목록 조회 실패:", err);
@@ -38,7 +48,7 @@ export function useHome() {
     };
 
     useEffect(() => {
-        loadGarments(category);
+        void loadGarments(category);
     }, [category]);
 
     // 카테고리 필터링은 API에서 처리하지만, 클라이언트 사이드 필터도 보조
@@ -57,11 +67,9 @@ export function useHome() {
         try {
             setUploading(true);
 
-            // 1) presign URL 발급 (Spring → Oracle Object Storage)
             const presign = await createImagePresign();
-            // 2) 이미지 업로드
             const uploaded = await uploadByToken(presign.uploadToken, uploadFile);
-            // 3) garments 테이블 등록
+
             await createGarment({
                 fileUrl: uploaded.fileUrl,
                 category: uploadCategory,
@@ -92,13 +100,11 @@ export function useHome() {
     };
 
     return {
-        // 목록
         category,
         setCategory,
         filteredGarments,
         loading,
         error,
-        // 업로드 폼
         uploadFile,
         setUploadFile,
         uploadCategory,
@@ -106,7 +112,6 @@ export function useHome() {
         brandName,
         setBrandName,
         uploading,
-        // 핸들러
         handleRegisterGarment,
         handleSelectGarment,
     };
