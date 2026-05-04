@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://apivirtualtryon.p-e.kr:8080',
+        target: 'https://apivirtualtryon.p-e.kr',
         changeOrigin: true,
         secure: false,
       },
