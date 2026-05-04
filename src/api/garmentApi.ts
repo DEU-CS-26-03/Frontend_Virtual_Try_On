@@ -11,6 +11,9 @@ interface GarmentWire {
     fileurl?: string;
     file_url?: string;
     category?: string;
+    brandKey?: string;
+    brandkey?: string;
+    brand_key?: string;
     brandName?: string;
     brandname?: string;
     brand_name?: string;
@@ -40,7 +43,13 @@ function fromGarmentWire(data: GarmentWire): GarmentItem {
         id: String(data.id ?? data.garmentid ?? data.garmentId ?? ""),
         fileUrl: normalizeFileUrl(data.fileUrl ?? data.fileurl ?? data.file_url),
         category: normalizeCategory(data.category),
-        brandName: data.brandName ?? data.brandname ?? data.brand_name,
+        brandName:
+            data.brandName ??
+            data.brandname ??
+            data.brand_name ??
+            data.brandKey ??
+            data.brandkey ??
+            data.brand_key,
         createdAt: data.createdAt ?? data.createdat ?? data.created_at,
     };
 }
