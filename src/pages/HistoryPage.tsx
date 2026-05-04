@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Header from "../components/layout/Header";
 import { deleteTryon, getTryonList, type TryonJob } from "../api/tryonApi";
 
@@ -25,56 +25,97 @@ const statusLabelMap: Record<string, string> = {
 
 const parseJwt = (token: string): MyInfo | null => {
   try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) {
+      return null;
+    }
+
+    const normalizedPayload = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const decodedPayload = JSON.parse(atob(normalizedPayload)) as Record<string, unknown>;
+
     return {
-      id: payload.userId || payload.sub || 0,
-      email: payload.email || "",
-      nickname: payload.nickname || payload.name || "USER",
-      role: payload.role || "USER",
+      id:
+          typeof decodedPayload.userId === "number"
+              ? decodedPayload.userId
+              : typeof decodedPayload.sub === "number"
+                  ? decodedPayload.sub
+                  : 0,
+      email:
+          typeof decodedPayload.email === "string"
+              ? decodedPayload.email
+              : "",
+      nickname:
+          typeof decodedPayload.nickname === "string"
+              ? decodedPayload.nickname
+              : typeof decodedPayload.name === "string"
+                  ? decodedPayload.name
+                  : "USER",
+      role:
+          typeof decodedPayload.role === "string"
+              ? decodedPayload.role
+              : "USER",
     };
   } catch {
     return null;
   }
 };
 
+const getAccessToken = (): string | null => {
+  try {
+    return localStorage.getItem("accessToken");
+  } catch {
+    return null;
+  }
+};
+
 const HistoryPage = () => {
-  const [user, setUser] = useState<MyInfo | null>(null);
+  const user = useMemo(() => {
+    const token = getAccessToken();
+    return token ? parseJwt(token) : null;
+  }, []);
+
   const [history, setHistory] = useState<TryonJob[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadPage = async () => {
-    try {
-      setLoading(true);
-
-      // 토큰에서 사용자 정보 파싱
-      const token = localStorage.getItem("accessToken");
-      if (token) {
-        const parsedUser = parseJwt(token);
-        setUser(parsedUser || null);
-      }
-
-      // 히스토리 목록 불러오기
-      const tryons = await getTryonList();
-      setHistory(tryons);
-    } catch (error) {
-      console.error("history load error:", error);
-      alert("히스토리를 불러오지 못했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadPage();
+    let cancelled = false;
+
+    const loadHistory = async () => {
+      try {
+        const tryons = await getTryonList();
+
+        if (!cancelled) {
+          setHistory(tryons);
+        }
+      } catch (error: unknown) {
+        console.error("history load error:", error);
+
+        if (!cancelled) {
+          alert("히스토리를 불러오지 못했습니다.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadHistory();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleDelete = async (tryonId: string) => {
-    if (!window.confirm("이 피팅 내역을 삭제하시겠습니까?")) return;
+    if (!window.confirm("이 피팅 내역을 삭제하시겠습니까?")) {
+      return;
+    }
 
     try {
       await deleteTryon(tryonId);
       setHistory((prev) => prev.filter((item) => item.tryonId !== tryonId));
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("delete error:", error);
       alert("삭제에 실패했습니다.");
     }
@@ -95,7 +136,7 @@ const HistoryPage = () => {
               {user?.nickname || "USER"}
             </span>
             </h2>
-            <p className="mt-4 text-gray-500 font-medium">{user?.email}</p>
+            <p className="mt-4 text-gray-500 font-medium">{user?.email || ""}</p>
           </div>
 
           <h3 className="text-xl font-black mb-10 border-b border-gray-200 pb-4">
@@ -161,14 +202,15 @@ const HistoryPage = () => {
 
                         <div className="flex gap-3">
                           <button
-                              onClick={() =>
-                                  item.resultImageUrl &&
+                              onClick={() => {
+                                if (item.resultImageUrl) {
                                   window.open(
                                       item.resultImageUrl,
                                       "_blank",
                                       "noopener,noreferrer"
-                                  )
-                              }
+                                  );
+                                }
+                              }}
                               disabled={!item.resultImageUrl}
                               className={`flex-1 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${
                                   item.resultImageUrl
