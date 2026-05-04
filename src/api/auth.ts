@@ -1,53 +1,51 @@
-// src/api/auth.ts
-import { API_ROUTES, apiRequest } from "./client";
+import { apiRequest, API_ROUTES } from "./client";
 
-interface MyInfoWire {
-  id?: number;
-  email?: string;
-  name?: string;
-  nickname?: string;
-  username?: string;
-}
-
-export interface MyInfo {
-  id?: number;
+export type LoginRequest = {
   email: string;
-  name: string;
-  nickname?: string;
-}
+  password: string;
+};
 
-export const getMyInfo = async (): Promise<MyInfo> => {
-  const data = await apiRequest<MyInfoWire>(API_ROUTES.AUTH_LOGIN);
+export type LoginResponse = {
+  accessToken?: string;
+  tokenType?: string;
+  user?: {
+    id: number;
+    email: string;
+    nickname: string;
+    role: string;
+  };
+  message?: string;
+};
 
-  return {
-    id: data.id,
-    email: data.email || "",
-    name: data.nickname || data.name || data.username || "USER",
+export type RegisterRequest = {
+  email: string;
+  password: string;
+  nickname: string;
+};
+
+export type RegisterResponse = {
+  message?: string;
+  user?: {
+    id: number;
+    email: string;
+    nickname: string;
+    role: string;
   };
 };
 
-type RegisterRequest = {
-  email: string;
-  password: string;
-  name?: string;
-  username?: string;
-};
-
-type RegisterResponse = {
-  id?: string;
-  email?: string;
-  name?: string;
-  username?: string;
-  accessToken?: string;
-  message?: string;
+export const loginUser = async (
+    loginData: LoginRequest
+): Promise<LoginResponse> => {
+  return apiRequest<LoginResponse>(API_ROUTES.AUTH_LOGIN, {
+    method: "POST",
+    body: JSON.stringify(loginData),
+  });
 };
 
 export const registerUser = async (
     userData: RegisterRequest
 ): Promise<RegisterResponse> => {
-  const REGISTER_URL = API_ROUTES.AUTH_LOGIN.replace("/login", "/register");
-
-  return await apiRequest(REGISTER_URL, {
+  return apiRequest<RegisterResponse>(API_ROUTES.AUTH_REGISTER, {
     method: "POST",
     body: JSON.stringify(userData),
   });
