@@ -17,7 +17,7 @@ export interface MyInfo {
 }
 
 export const getMyInfo = async (): Promise<MyInfo> => {
-  const data = await apiRequest<MyInfoWire>(API_ROUTES.ME);
+  const data = await apiRequest<MyInfoWire>(API_ROUTES.AUTH_LOGIN);
 
   return {
     id: data.id,
@@ -26,9 +26,26 @@ export const getMyInfo = async (): Promise<MyInfo> => {
   };
 };
 
-export const registerUser = async (userData: any): Promise<any> => {
-  
-  const REGISTER_URL = API_ROUTES.LOGIN.replace("/login", "/register");
+type RegisterRequest = {
+  email: string;
+  password: string;
+  name?: string;
+  username?: string;
+};
+
+type RegisterResponse = {
+  id?: string;
+  email?: string;
+  name?: string;
+  username?: string;
+  accessToken?: string;
+  message?: string;
+};
+
+export const registerUser = async (
+    userData: RegisterRequest
+): Promise<RegisterResponse> => {
+  const REGISTER_URL = API_ROUTES.AUTH_LOGIN.replace("/login", "/register");
 
   return await apiRequest(REGISTER_URL, {
     method: "POST",

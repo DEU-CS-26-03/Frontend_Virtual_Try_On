@@ -16,6 +16,7 @@ interface GarmentWire {
     brand_name?: string;
     createdAt?: string;
     createdat?: string;
+    created_at?: string;
 }
 
 export interface GarmentItem {
@@ -27,14 +28,7 @@ export interface GarmentItem {
 }
 
 function normalizeFileUrl(url?: string): string {
-    const value = String(url ?? "").trim();
-    if (!value) return "";
-    if (value.startsWith("http://") || value.startsWith("https://")) return value;
-
-    const base = String(import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
-    if (!base) return value.startsWith("/") ? value : `/${value}`;
-
-    return `${base}${value.startsWith("/") ? value : `/${value}`}`;
+    return String(url ?? "").trim();
 }
 
 function normalizeCategory(category?: string): string {
@@ -47,7 +41,7 @@ function fromGarmentWire(data: GarmentWire): GarmentItem {
         fileUrl: normalizeFileUrl(data.fileUrl ?? data.fileurl ?? data.file_url),
         category: normalizeCategory(data.category),
         brandName: data.brandName ?? data.brandname ?? data.brand_name,
-        createdAt: data.createdAt ?? data.createdat,
+        createdAt: data.createdAt ?? data.createdat ?? data.created_at,
     };
 }
 
@@ -62,21 +56,18 @@ export async function getGarments(category?: GarmentCategory): Promise<GarmentIt
 }
 
 export async function createGarment(params: {
-    file: File;
+    fileUrl: string;
     category: Exclude<GarmentCategory, "all">;
     brandName?: string;
 }): Promise<GarmentItem> {
-    const formData = new FormData();
-    formData.append("file", params.file);
-    formData.append("category", params.category);
-    if (params.brandName) {
-        formData.append("brandName", params.brandName);
-    }
-
     const data = await apiRequest<GarmentWire>(API_ROUTES.GARMENTS, {
         method: "POST",
-        body: formData,
-        isFormData: true,
+        withAuth: true,
+        body: JSON.stringify({
+            fileUrl: params.fileUrl,
+            category: params.category,
+            brandName: params.brandName,
+        }),
     });
 
     return fromGarmentWire(data);

@@ -1,19 +1,17 @@
-// src/api/client.ts
-export const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "/api";
+export const API_BASE_URL = "/api/v1";
 
 export const API_ROUTES = {
-  AUTH_LOGIN: `${API_BASE_URL}/api/v1/auth/login`,
-  AUTH_REGISTER: `${API_BASE_URL}/api/v1/auth/register`,
-  AUTH_ME: `${API_BASE_URL}/api/v1/users/me`,
-  USER_IMAGES: `${API_BASE_URL}/api/v1/user-images`,
-  GARMENTS: `${API_BASE_URL}/api/v1/garments`,
-  FAVORITES: `${API_BASE_URL}/api/v1/favorites`,
-  TRYONS: `${API_BASE_URL}/api/v1/tryons`,
-  RESULTS: `${API_BASE_URL}/api/v1/results`,
-  HEALTH: `${API_BASE_URL}/api/v1/model-health`,
-  IMAGES_PRESIGN: `${API_BASE_URL}/api/v1/images/presign`,
-  UPLOADS: `${API_BASE_URL}/api/v1/uploads`,
+  AUTH_LOGIN: `${API_BASE_URL}/auth/login`,
+  AUTH_REGISTER: `${API_BASE_URL}/auth/register`,
+  AUTH_ME: `${API_BASE_URL}/users/me`,
+  USER_IMAGES: `${API_BASE_URL}/user-images`,
+  GARMENTS: `${API_BASE_URL}/garments`,
+  FAVORITES: `${API_BASE_URL}/favorites`,
+  TRYONS: `${API_BASE_URL}/tryons`,
+  RESULTS: `${API_BASE_URL}/results`,
+  HEALTH: `${API_BASE_URL}/model-health`,
+  IMAGES_PRESIGN: `${API_BASE_URL}/images/presign`,
+  UPLOADS: `${API_BASE_URL}/uploads`,
 };
 
 export class ApiError extends Error {
@@ -30,6 +28,7 @@ export class ApiError extends Error {
 
 type ApiRequestOptions = RequestInit & {
   isFormData?: boolean;
+  withAuth?: boolean;
   token?: string | null;
 };
 
@@ -51,15 +50,17 @@ export async function apiRequest<T = unknown>(
 ): Promise<T> {
   const {
     isFormData = false,
-    token = getAccessToken(),
+    withAuth = false,
+    token,
     headers,
     ...restOptions
   } = options;
 
   const finalHeaders = new Headers(headers);
+  const accessToken = token ?? (withAuth ? getAccessToken() : null);
 
-  if (token) {
-    finalHeaders.set("Authorization", `Bearer ${token}`);
+  if (accessToken) {
+    finalHeaders.set("Authorization", `Bearer ${accessToken}`);
   }
 
   if (!isFormData && !finalHeaders.has("Content-Type")) {

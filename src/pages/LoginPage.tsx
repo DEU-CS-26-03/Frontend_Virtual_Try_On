@@ -21,12 +21,29 @@ const LoginPage = () => {
     try {
       // 2. auth.ts의 loginUser 대신 apiRequest를 직접 호출
       // API_ROUTES.LOGIN은 client.ts에 정의된 "/api/v1/auth/login" 경로를 사용합니다.
-      const data = await apiRequest<any>(API_ROUTES.LOGIN, {
+      type LoginRequest = {
+        email: string;
+        password: string;
+      };
+
+      type LoginResponse = {
+        accessToken?: string;
+        refreshToken?: string;
+        token?: string;
+        user?: {
+          id?: string;
+          email?: string;
+          name?: string;
+        };
+        message?: string;
+      };
+
+      const data = await apiRequest<LoginResponse>(API_ROUTES.AUTH_LOGIN, {
         method: "POST",
         body: JSON.stringify({
-          email: email,      // 백엔드 필드명이 username이라면 username으로 수정
-          password: password,
-        }),
+          email,
+          password,
+        } satisfies LoginRequest),
       });
 
       // 3. 토큰 저장 및 이동
