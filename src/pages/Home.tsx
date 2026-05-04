@@ -1,5 +1,12 @@
 // src/pages/Home.tsx
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { createImagePresign, uploadByToken } from "../api/uploadApi";
 import { createGarment, getGarments, type GarmentItem } from "../api/garmentApi";
@@ -36,6 +43,29 @@ const CATEGORY_LABEL_MAP: Record<string, string> = {
   outer: "아우터",
 };
 
+const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "https://apivirtualtryon.p-e.kr";
+
+const normalizeFileUrl = (url?: string) => {
+  if (!url) return "";
+
+  if (url.startsWith("https://")) return url;
+
+  if (url.startsWith("http://217.142.255.158")) {
+    return url.replace("http://217.142.255.158", API_BASE_URL);
+  }
+
+  if (url.startsWith("http://")) {
+    return url.replace("http://", "https://");
+  }
+
+  if (url.startsWith("/")) {
+    return `${API_BASE_URL}${url}`;
+  }
+
+  return `${API_BASE_URL}/${url}`;
+};
+
 const getApiCategory = (label: string) =>
     UI_CATEGORIES.find((item) => item.label === label)?.value ?? "all";
 
@@ -43,7 +73,7 @@ const toDisplayGarment = (item: GarmentItem): HomeDisplayGarment => ({
   garmentId: item.id,
   name: item.brandName?.trim() || "등록 의상",
   category: CATEGORY_LABEL_MAP[item.category] || item.category || "기타",
-  fileUrl: item.fileUrl || "",
+  fileUrl: normalizeFileUrl(item.fileUrl),
   price: "N/A",
 });
 
@@ -67,28 +97,28 @@ const Home = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const loadGarments = async (selectedCategory = selectedApiCategory) => {
-    try {
-      setLoading(true);
-      const data = await getGarments(selectedCategory);
-      setGarments(data);
-    } catch (error) {
-      console.error("의류 목록 조회 실패:", error);
-      setGarments([]);
-      alert("의류 목록을 불러오지 못했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadGarments = useCallback(
+      async (selectedCategory = selectedApiCategory) => {
+        try {
+          setLoading(true);
+          const data = await getGarments(selectedCategory);
+          setGarments(data);
+        } catch (error) {
+          console.error("의류 목록 조회 실패:", error);
+          setGarments([]);
+          alert("의류 목록을 불러오지 못했습니다.");
+        } finally {
+          setLoading(false);
+        }
+      },
+      [selectedApiCategory]
+  );
 
   useEffect(() => {
     void loadGarments(selectedApiCategory);
-  }, [selectedApiCategory]);
+  }, [selectedApiCategory, loadGarments]);
 
-  const displayGarments = useMemo(
-      () => garments.map(toDisplayGarment),
-      [garments]
-  );
+  const displayGarments = useMemo(() => garments.map(toDisplayGarment), [garments]);
 
   const handleFittingClick = (item: HomeDisplayGarment) => {
     const token = localStorage.getItem("accessToken");
@@ -141,9 +171,7 @@ const Home = () => {
           banners={BANNER_DATA}
           currentBanner={currentBanner}
           onPrevBanner={() =>
-              setCurrentBanner(
-                  (prev) => (prev - 1 + BANNER_DATA.length) % BANNER_DATA.length
-              )
+              setCurrentBanner((prev) => (prev - 1 + BANNER_DATA.length) % BANNER_DATA.length)
           }
           onNextBanner={() =>
               setCurrentBanner((prev) => (prev + 1) % BANNER_DATA.length)
