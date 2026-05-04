@@ -1,8 +1,13 @@
-// src/pages/HistoryPage.tsx
 import { useEffect, useState } from "react";
 import Header from "../components/layout/Header";
-import { getMyInfo, type MyInfo } from "../api/auth";
 import { deleteTryon, getTryonList, type TryonJob } from "../api/tryonApi";
+
+type MyInfo = {
+  id: number;
+  email: string;
+  nickname: string;
+  role: string;
+};
 
 const statusStyleMap: Record<string, string> = {
   queued: "bg-gray-100 text-gray-500",
@@ -18,6 +23,20 @@ const statusLabelMap: Record<string, string> = {
   failed: "실패",
 };
 
+const parseJwt = (token: string): MyInfo | null => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return {
+      id: payload.userId || payload.sub || 0,
+      email: payload.email || "",
+      nickname: payload.nickname || payload.name || "USER",
+      role: payload.role || "USER",
+    };
+  } catch {
+    return null;
+  }
+};
+
 const HistoryPage = () => {
   const [user, setUser] = useState<MyInfo | null>(null);
   const [history, setHistory] = useState<TryonJob[]>([]);
@@ -26,8 +45,16 @@ const HistoryPage = () => {
   const loadPage = async () => {
     try {
       setLoading(true);
-      const [me, tryons] = await Promise.all([getMyInfo(), getTryonList()]);
-      setUser(me);
+
+      // 토큰에서 사용자 정보 파싱
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        const parsedUser = parseJwt(token);
+        setUser(parsedUser || null);
+      }
+
+      // 히스토리 목록 불러오기
+      const tryons = await getTryonList();
       setHistory(tryons);
     } catch (error) {
       console.error("history load error:", error);
@@ -59,14 +86,21 @@ const HistoryPage = () => {
 
         <div className="max-w-[1600px] mx-auto px-10 py-20">
           <div className="mb-20">
-            <p className="text-[10px] font-black text-blue-600 tracking-[0.3em] mb-4">내 프로필</p>
+            <p className="text-[10px] font-black text-blue-600 tracking-[0.3em] mb-4">
+              내 프로필
+            </p>
             <h2 className="text-6xl font-[1000] tracking-tighter">
-              안녕하세요. <span className="text-gray-300 italic">{user?.nickname || user?.name || "USER"}</span>
+              안녕하세요.{" "}
+              <span className="text-gray-300 italic">
+              {user?.nickname || "USER"}
+            </span>
             </h2>
             <p className="mt-4 text-gray-500 font-medium">{user?.email}</p>
           </div>
 
-          <h3 className="text-xl font-black mb-10 border-b border-gray-200 pb-4">피팅 히스토리</h3>
+          <h3 className="text-xl font-black mb-10 border-b border-gray-200 pb-4">
+            피팅 히스토리
+          </h3>
 
           {loading ? (
               <div className="py-20 text-center border-2 border-dashed border-gray-200 rounded-sm">
@@ -106,7 +140,9 @@ const HistoryPage = () => {
                     >
                       {statusLabelMap[item.status] || item.status}
                     </span>
-                          <span className="text-xs text-gray-400 font-bold">{item.progress}%</span>
+                          <span className="text-xs text-gray-400 font-bold">
+                      {item.progress}%
+                    </span>
                         </div>
 
                         <p className="text-sm font-bold text-[#111111] break-all mb-2">
@@ -118,14 +154,20 @@ const HistoryPage = () => {
                         </p>
 
                         <p className="text-xs text-gray-400 mb-6">
-                          {item.createdAt ? new Date(item.createdAt).toLocaleString() : "생성일 없음"}
+                          {item.createdAt
+                              ? new Date(item.createdAt).toLocaleString()
+                              : "생성일 없음"}
                         </p>
 
                         <div className="flex gap-3">
                           <button
                               onClick={() =>
                                   item.resultImageUrl &&
-                                  window.open(item.resultImageUrl, "_blank", "noopener,noreferrer")
+                                  window.open(
+                                      item.resultImageUrl,
+                                      "_blank",
+                                      "noopener,noreferrer"
+                                  )
                               }
                               disabled={!item.resultImageUrl}
                               className={`flex-1 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${
