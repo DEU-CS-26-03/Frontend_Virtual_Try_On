@@ -1,3 +1,4 @@
+// src/api/client.ts
 export const API_BASE_URL = "/api/v1";
 
 export const API_ROUTES = {
@@ -33,7 +34,11 @@ type ApiRequestOptions = RequestInit & {
 };
 
 function getAccessToken(): string | null {
-  return localStorage.getItem("accessToken");
+  try {
+    return localStorage.getItem("accessToken");
+  } catch {
+    return null;
+  }
 }
 
 async function parseResponse(res: Response) {
@@ -58,6 +63,10 @@ export async function apiRequest<T = unknown>(
 
   const finalHeaders = new Headers(headers);
   const accessToken = token ?? (withAuth ? getAccessToken() : null);
+
+  if (withAuth && !accessToken) {
+    throw new ApiError("로그인이 필요합니다.", 401);
+  }
 
   if (accessToken) {
     finalHeaders.set("Authorization", `Bearer ${accessToken}`);

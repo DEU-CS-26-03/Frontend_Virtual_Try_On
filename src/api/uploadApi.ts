@@ -46,7 +46,9 @@ function fromUploadWire(data: UploadResultWire): UploadResult {
 export async function createImagePresign(): Promise<ImagePresignResponse> {
     const data = await apiRequest<ImagePresignWire>(API_ROUTES.IMAGES_PRESIGN, {
         method: "POST",
+        withAuth: true,
     });
+
     return fromPresignWire(data);
 }
 
@@ -62,6 +64,8 @@ export async function uploadByToken(
         {
             method: "PUT",
             body: formData,
+            withAuth: true,
+            isFormData: true,
         }
     );
 
