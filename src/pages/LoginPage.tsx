@@ -1,4 +1,3 @@
-// src/pages/LoginPage.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_ROUTES, apiRequest, ApiError } from "../api/client";
@@ -9,8 +8,9 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting) return;
 
     try {
       setSubmitting(true);
@@ -18,7 +18,7 @@ const LoginPage = () => {
       if (email === "capstone@gmail.com" && password === "1234") {
         localStorage.setItem("accessToken", "capstone-test-token");
         alert("테스트 계정으로 로그인되었습니다.");
-        navigate("/");
+        navigate("/", { replace: true });
         return;
       }
 
@@ -39,12 +39,14 @@ const LoginPage = () => {
         message?: string;
       };
 
+      const payload: LoginRequest = { email, password };
+
       const data = await apiRequest<LoginResponse>(API_ROUTES.AUTH_LOGIN, {
         method: "POST",
-        body: JSON.stringify({
-          email,
-          password,
-        } satisfies LoginRequest),
+        body: JSON.stringify(payload),
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
 
       const token = data.accessToken || data.token;
@@ -55,7 +57,7 @@ const LoginPage = () => {
 
       localStorage.setItem("accessToken", token);
       alert("로그인 성공!");
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (error) {
       console.error("Login Error:", error);
 
@@ -68,6 +70,7 @@ const LoginPage = () => {
       setSubmitting(false);
     }
   };
+
   return (
       <div className="min-h-screen bg-[#F5F5F3] flex items-center justify-center px-10">
         <div className="max-w-md w-full bg-white p-12 shadow-sm rounded-sm">
@@ -128,6 +131,7 @@ const LoginPage = () => {
 
           <div className="mt-8 text-center">
             <button
+                type="button"
                 onClick={() => navigate("/")}
                 className="text-gray-400 text-xs font-bold hover:text-[#111111] transition-colors"
                 disabled={submitting}
@@ -139,12 +143,14 @@ const LoginPage = () => {
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-xs">
               계정이 없으신가요?{" "}
-              <span
+              <button
+                  type="button"
                   onClick={() => !submitting && navigate("/register")}
                   className="text-[#111111] font-bold cursor-pointer underline underline-offset-4"
+                  disabled={submitting}
               >
-          회원가입하기
-        </span>
+                회원가입하기
+              </button>
             </p>
           </div>
         </div>

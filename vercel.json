@@ -4,6 +4,10 @@
     {
       "source": "/api/:path*",
       "destination": "http://apivirtualtryon.p-e.kr/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
     }
   ]
 }
