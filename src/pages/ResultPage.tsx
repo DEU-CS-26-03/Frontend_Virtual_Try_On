@@ -3,14 +3,28 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Star, Download, RotateCcw, Camera } from "lucide-react";
 import Header from "../components/layout/Header";
-import { createImagePresign, uploadByToken } from "../api/uploadApi";
-import { createUserImage } from "../api/userImageApi";
 import { createTryonJob, getTryonStatus, type TryonStatus } from "../api/tryonApi";
+
+type ResultPageState = {
+  userFile?: File | null;
+  garmentId?: string;
+  externalItemKey?: string;
+  userPreview?: string | null;
+  userImageId?: string;
+  uploadedUserImageUrl?: string;
+};
 
 const ResultPage = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { userFile, garmentId, externalItemKey, userPreview } = state || {};
+
+  const {
+    garmentId,
+    externalItemKey,
+    userPreview,
+    userImageId,
+    uploadedUserImageUrl,
+  } = (state || {}) as ResultPageState;
 
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,6 +32,8 @@ const ResultPage = () => {
   const [rating, setRating] = useState(0);
   const [showRec, setShowRec] = useState(false);
   const pollTimerRef = useRef<number | undefined>(undefined);
+
+  const previewImage = userPreview || uploadedUserImageUrl || null;
 
   const handleDownload = () => {
     if (!resultImage) return;
@@ -40,39 +56,24 @@ const ResultPage = () => {
     let active = true;
 
     const clearPolling = () => {
-      if (pollTimerRef.current) {
+      if (pollTimerRef.current !== undefined) {
         window.clearInterval(pollTimerRef.current);
+        pollTimerRef.current = undefined;
       }
     };
 
     const runFittingWorkflow = async () => {
-      if (!userFile || (!garmentId && !externalItemKey)) {
+      if (!userImageId || (!garmentId && !externalItemKey)) {
         navigate("/");
         return;
       }
 
       try {
         setLoading(true);
-        setStatusText("업로드 준비 중...");
-
-        const presign = await createImagePresign();
-        if (!active) return;
-
-        setStatusText("사용자 사진 업로드 중...");
-        const uploaded = await uploadByToken(presign.uploadToken, userFile);
-        if (!active) return;
-
-        setStatusText("사용자 이미지 등록 중...");
-        const userImage = await createUserImage({
-          fileUrl: uploaded.fileUrl,
-          objectKey: uploaded.objectKey,
-          view: "FRONT",
-        });
-        if (!active) return;
-
         setStatusText("피팅 요청 생성 중...");
+
         const job = await createTryonJob({
-          userImageId: userImage.id,
+          userImageId,
           garmentId: garmentId ? String(garmentId) : undefined,
           externalItemKey,
         });
@@ -110,6 +111,10 @@ const ResultPage = () => {
             }
           } catch (pollError) {
             console.error("polling error:", pollError);
+            if (!active) return;
+            setStatusText("상태 조회 중 오류가 발생했습니다.");
+            setLoading(false);
+            clearPolling();
           }
         }, 3000);
       } catch (err) {
@@ -125,7 +130,7 @@ const ResultPage = () => {
       active = false;
       clearPolling();
     };
-  }, [userFile, garmentId, externalItemKey, navigate]);
+  }, [userImageId, garmentId, externalItemKey, navigate]);
 
   return (
       <div className="min-h-screen bg-[#F5F5F3] pb-32 font-sans text-[#111111]">
@@ -161,7 +166,17 @@ const ResultPage = () => {
             Original
           </span>
             <div className="relative aspect-[3/4] bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
-              <img src={userPreview} className="w-full h-full object-cover" alt="Before" />
+              {previewImage ? (
+                  <img
+                      src={previewImage}
+                      className="w-full h-full object-cover"
+                      alt="Before"
+                  />
+              ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-300 font-bold">
+                    사용자 이미지가 없습니다
+                  </div>
+              )}
               <div className="absolute top-6 left-6 bg-black/80 backdrop-blur-md text-white px-5 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase">
                 Before
               </div>
@@ -186,7 +201,7 @@ const ResultPage = () => {
               ) : (
                   <>
                     <img
-                        src={resultImage || userPreview}
+                        src={resultImage || previewImage || ""}
                         className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-1000"
                         alt="Result"
                     />

@@ -1,6 +1,7 @@
 // src/pages/FittingPage.tsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { createUserImage, type UserImage } from "../api/userImageApi";
 import Header from "../components/layout/Header";
 import UploadButton from "../components/upload/UploadButton";
 
@@ -13,12 +14,40 @@ const FittingPage = () => {
     const externalItemKey = state?.externalItemKey as string | undefined;
 
     const [userFile, setUserFile] = useState<File | null>(null);
+    const [uploadedUserImage, setUploadedUserImage] = useState<UserImage | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     const userPreview = useMemo(() => {
+
         if (!userFile) return null;
         return URL.createObjectURL(userFile);
     }, [userFile]);
+    useEffect(() => {
+        return () => {
+            if (userPreview) URL.revokeObjectURL(userPreview);
+        };
+    }, [userPreview]);
 
+    const handleUploadUserImage = async (file: File) => {
+        setUserFile(file);
+        setUploadedUserImage(null);
+        setUploadError(null);
+
+        try {
+            setUploading(true);
+            const uploaded = await createUserImage({
+                file,
+                view: "FRONT",
+            });
+            setUploadedUserImage(uploaded);
+        } catch (error) {
+            console.error("사용자 이미지 업로드 실패:", error);
+            setUploadError(error instanceof Error ? error.message : "업로드에 실패했습니다.");
+        } finally {
+            setUploading(false);
+        }
+    };
     const handleNext = () => {
         if (!cloth) {
             alert("선택된 의상이 없습니다. 홈에서 다시 선택해주세요.");
@@ -31,6 +60,11 @@ const FittingPage = () => {
             return;
         }
 
+        if (!uploadedUserImage?.id) {
+            alert("사용자 사진 업로드가 아직 완료되지 않았습니다.");
+            return;
+        }
+
         navigate("/result", {
             state: {
                 cloth,
@@ -38,6 +72,8 @@ const FittingPage = () => {
                 externalItemKey,
                 userFile,
                 userPreview,
+                userImageId: uploadedUserImage.id,
+                uploadedUserImageUrl: uploadedUserImage.fileUrl,
             },
         });
     };
@@ -98,14 +134,33 @@ const FittingPage = () => {
                         </div>
 
                         <div className="mt-6">
-                            <UploadButton onChange={setUserFile} />
+                            <UploadButton onChange={handleUploadUserImage} />
                         </div>
+
+                        {uploading && (
+                            <p className="mt-3 text-sm text-blue-600 font-medium">
+                                사용자 사진 업로드 중...
+                            </p>
+                        )}
+
+                        {uploadedUserImage && !uploading && (
+                            <p className="mt-3 text-sm text-green-600 font-medium">
+                                업로드 완료
+                            </p>
+                        )}
+
+                        {uploadError && (
+                            <p className="mt-3 text-sm text-red-500 font-medium">
+                                {uploadError}
+                            </p>
+                        )}
 
                         <button
                             onClick={handleNext}
-                            className="mt-4 w-full bg-[#111111] text-white py-4 rounded-2xl font-bold hover:bg-gray-800 transition-colors"
+                            disabled={!userFile || uploading || !uploadedUserImage}
+                            className="mt-4 w-full bg-[#111111] text-white py-4 rounded-2xl font-bold hover:bg-gray-800 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                         >
-                            피팅 시작하기
+                            {uploading ? "업로드 중..." : "피팅 시작하기"}
                         </button>
                     </div>
                 </div>
