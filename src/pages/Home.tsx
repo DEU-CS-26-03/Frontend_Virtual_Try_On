@@ -233,6 +233,7 @@ const Home = () => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
       alert("로그인 후 의상을 업로드할 수 있습니다.");
+      navigate("/login");
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
