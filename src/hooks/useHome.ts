@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createImagePresign, uploadByToken } from "../api/uploadApi";
+import { uploadGarmentDirect } from "../api/uploadApi";
 import {
-    createGarment,
     getGarments,
     type GarmentItem,
     type GarmentCategory,
@@ -64,16 +63,19 @@ export function useHome() {
             return;
         }
 
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            alert("로그인 후 의류를 등록할 수 있습니다.");
+            navigate("/login");
+            return;
+        }
+
         try {
             setUploading(true);
 
-            const presign = await createImagePresign();
-            const uploaded = await uploadByToken(presign.uploadToken, uploadFile);
-
-            await createGarment({
-                fileUrl: uploaded.fileUrl,
+            await uploadGarmentDirect({
+                file: uploadFile,
                 category: uploadCategory,
-                brandName: brandName.trim(),
             });
 
             alert("의류 등록이 완료되었습니다.");
