@@ -10,7 +10,6 @@ const Fitting = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ★ 수정됨: 사용하지 않는 garmentId 제거
   const { cloth } = location.state || {};
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,17 +31,32 @@ const Fitting = () => {
     try {
       setIsLoading(true);
 
-      // URL 옷 이미지를 다운로드하여 File 객체로 변환 (서버 에러 방지)
-      const response = await fetch(cloth);
+      // ★ 추가됨: Vercel 환경에서 상대경로로 된 이미지를 백엔드에서 정확히 다운로드
+      const backendBaseUrl = "https://apivirtualtryon.p-e.kr";
+      const targetClothUrl = cloth.startsWith("http") ? cloth : backendBaseUrl + cloth;
+
+      const response = await fetch(targetClothUrl);
+      if (!response.ok) {
+        throw new Error("옷 이미지를 다운로드할 수 없습니다.");
+      }
+
       const blob = await response.blob();
       const clothFile = new File([blob], "cloth.jpg", { type: blob.type || "image/jpeg" });
 
-      // 두 개의 파일 모두 Spring으로 전송
       const job = await createTryonJob({
         personImage: file,
         clothImage: clothFile,
         clothType: "upper",
       });
+
+      console.log("서버로부터 받은 Job 데이터:", job); // (F12 콘솔 확인용)
+
+      // ★ 안전장치: 백엔드에서 정상 202 응답을 줬는데, JSON에 tryonId가 빈칸일 경우!
+      if (!job || !job.tryonId || job.tryonId === "undefined" || job.tryonId === "") {
+        alert("요청은 성공했으나, 백엔드 응답 데이터가 비어있습니다.\n(TryonResponse.java 파일에 @Getter 어노테이션이 있는지 꼭 확인하세요!)");
+        setIsLoading(false);
+        return;
+      }
 
       navigate("/result", {
         state: { tryonId: job.tryonId, userPreview: userPreviewUrl }
@@ -50,7 +64,7 @@ const Fitting = () => {
 
     } catch (error) {
       console.error("피팅 작업 생성 실패:", error);
-      alert("가상 피팅 요청에 실패했습니다. 서버 로그를 확인해주세요.");
+      alert("가상 피팅 요청에 실패했습니다. 프론트엔드 F12 콘솔 로그를 확인해주세요.");
     } finally {
       setIsLoading(false);
     }
@@ -60,7 +74,6 @@ const Fitting = () => {
       <div className="min-h-screen bg-[#F5F5F3] pb-32 font-sans text-[#111111]">
         <Header />
 
-        {/* AI 미리보기 플로팅 카드 */}
         {userPreviewUrl && cloth && (
             <div className="fixed top-28 right-12 z-50 w-56 hidden xl:block animate-in fade-in slide-in-from-right-10 duration-700">
               <div className="bg-white/80 backdrop-blur-xl p-5 rounded-[2rem] shadow-2xl border border-white">
@@ -77,7 +90,6 @@ const Fitting = () => {
             </div>
         )}
 
-        {/* 헤더 타이틀 */}
         <div className="max-w-[1600px] mx-auto px-10 pt-16 pb-12 flex items-center gap-6">
           <button onClick={() => navigate("/")} className="group p-4 bg-white rounded-full border border-gray-200 hover:bg-[#111111] transition-all">
             <ChevronLeft size={24} className="group-hover:text-white" />
@@ -89,7 +101,6 @@ const Fitting = () => {
         </div>
 
         <div className="max-w-[1600px] mx-auto grid md:grid-cols-2 gap-12 px-10 mt-4">
-          {/* 1단계. 사진 업로드 */}
           <div className="flex flex-col">
             <div className="flex justify-between items-end mb-6 px-2">
               <span className="text-[11px] font-[1000] tracking-[0.3em] text-gray-300 uppercase">Step 01</span>
@@ -107,7 +118,6 @@ const Fitting = () => {
             </div>
           </div>
 
-          {/* 2단계. 선택한 아이템 */}
           <div className="flex flex-col">
             <div className="flex justify-between items-end mb-6 px-2">
               <span className="text-[11px] font-[1000] tracking-[0.3em] text-gray-300 uppercase">Step 02</span>
@@ -124,7 +134,6 @@ const Fitting = () => {
           </div>
         </div>
 
-        {/* 실행 버튼 */}
         <div className="flex justify-center mt-24">
           <button
               onClick={handleNext}
