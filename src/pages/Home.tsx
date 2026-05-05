@@ -8,8 +8,8 @@ import {
   type ChangeEvent,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { createImagePresign, uploadByToken } from "../api/uploadApi";
-import { createGarment, getGarments, type GarmentItem } from "../api/garmentApi";
+import { uploadGarmentDirect } from "../api/uploadApi";
+import { getGarments, type GarmentItem } from "../api/garmentApi";
 import HomePage, {
   type HomeBanner,
   type HomeCategory,
@@ -230,25 +230,27 @@ const Home = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      alert("로그인 후 의상을 업로드할 수 있습니다.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     const uploadCategory: HomeCategory =
         selectedApiCategory === "all" ? "top" : selectedApiCategory;
-
-    const brandNameFromFile =
-        file.name.replace(/\.[^.]+$/, "").trim() || "사용자 업로드 의상";
 
     try {
       setUploading(true);
 
-      const presign = await createImagePresign();
-      const uploaded = await uploadByToken(presign.uploadToken, file);
-      const created = await createGarment({
-        fileUrl: uploaded.fileUrl,
+      await uploadGarmentDirect({
+        file,
         category: uploadCategory,
-        brandName: brandNameFromFile,
       });
 
       await loadGarments(selectedApiCategory);
-      handleFittingClick(toDisplayGarment(created));
     } catch (error) {
       console.error("의류 업로드 실패:", error);
       alert("의류 업로드에 실패했습니다.");

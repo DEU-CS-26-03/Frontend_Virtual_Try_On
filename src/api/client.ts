@@ -1,4 +1,7 @@
-export const API_BASE_URL = "/api/v1";
+export const API_ORIGIN =
+    import.meta.env.VITE_API_BASE_URL || "https://apivirtualtryon.p-e.kr";
+
+export const API_BASE_URL = `${API_ORIGIN}/api/v1`;
 
 export const API_ROUTES = {
   AUTH_LOGIN: `${API_BASE_URL}/auth/login`,
