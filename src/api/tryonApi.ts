@@ -11,7 +11,7 @@ export interface TryonError {
 
 export interface CreateTryonParams {
   personImage: File;
-  clothImage: File;
+  garmentId: string; // URL이 아닌 옷의 DB ID
   clothType?: string;
 }
 
@@ -60,8 +60,8 @@ export interface TryonJob {
 
 export async function createTryon(params: CreateTryonParams): Promise<TryonJob> {
   const formData = new FormData();
-  formData.append("personImage", params.personImage);
-  formData.append("clothImage", params.clothImage);
+  formData.append("personImage", params.personImage); // 사용자가 올린 사진
+  formData.append("garmentId", params.garmentId);     // 선택한 옷의 ID
   if (params.clothType) {
     formData.append("clothType", params.clothType);
   }
@@ -69,7 +69,7 @@ export async function createTryon(params: CreateTryonParams): Promise<TryonJob> 
   const data = await apiRequest<TryonWire>(API_ROUTES.TRYONS, {
     method: "POST",
     body: formData,
-    isFormData: true, // client.ts에 FormData 전송 처리가 되어있어야 합니다 (보통 Content-Type 자동 생략)
+    isFormData: true,
   });
 
   return fromTryonWire(data);

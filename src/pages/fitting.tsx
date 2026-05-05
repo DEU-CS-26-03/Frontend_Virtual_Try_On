@@ -11,7 +11,7 @@ const Fitting = () => {
   const navigate = useNavigate();
 
   // ★ 수정됨: 사용하지 않는 garmentId 제거
-  const { cloth } = location.state || {};
+  const { cloth, garmentId } = location.state || {};
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -24,7 +24,7 @@ const Fitting = () => {
   }, [userPreviewUrl]);
 
   const handleNext = async () => {
-    if (!file || !cloth) {
+    if (!file || !garmentId) {
       alert("내 사진과 의상을 모두 준비해주세요.");
       return;
     }
@@ -32,23 +32,22 @@ const Fitting = () => {
     try {
       setIsLoading(true);
 
-      const response = await fetch(cloth);
-      const blob = await response.blob();
-      const clothFile = new File([blob], "cloth.jpg", { type: blob.type || "image/jpeg" });
-
+      // ★ fetch로 옷 이미지 다운받는 코드 전부 삭제!
+      // 서버가 원하는 대로 사람 사진과 옷 ID만 보냅니다.
       const job = await createTryonJob({
         personImage: file,
-        clothImage: clothFile,
+        garmentId: garmentId,
         clothType: "upper",
       });
 
+      // 성공 시 발급받은 tryonId를 들고 결과 페이지로 이동
       navigate("/result", {
-        state: { tryonId: job.tryonId, userPreview: userPreviewUrl } // ★ 수정됨: 안 쓰는 clothUrl 넘김 제거
+        state: { tryonId: job.tryonId, userPreview: userPreviewUrl }
       });
 
     } catch (error) {
       console.error("피팅 작업 생성 실패:", error);
-      alert("가상 피팅 요청에 실패했습니다. 서버 연결을 확인해주세요.");
+      alert("가상 피팅 요청에 실패했습니다. 서버 로그를 확인해주세요.");
     } finally {
       setIsLoading(false);
     }
