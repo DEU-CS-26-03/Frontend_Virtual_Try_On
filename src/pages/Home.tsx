@@ -57,7 +57,6 @@ type ExtendedGarmentItem = GarmentItem & {
   garmentId?: string;
   name?: string | null;
   brandName?: string | null;
-  filename?: string | null;
   category?: string | null;
   fileUrl?: string | null;
   thumbnailUrl?: string | null;
@@ -125,23 +124,31 @@ const normalizeCategory = (category?: string | null): HomeCategory => {
 const getDisplayName = (item: GarmentItem) => {
   const garment = item as ExtendedGarmentItem;
 
-  return (
-      garment.name?.trim() ||
-      garment.brandName?.trim() ||
-      garment.filename?.replace(/\.[^.]+$/, "").trim() ||
-      "이름 없음"
-  );
+  const dbName = garment.name?.trim();
+  if (dbName) return dbName;
+
+  const brandName = garment.brandName?.trim();
+  if (brandName) return brandName;
+
+  return "이름 없음";
 };
 
 const getDisplayPrice = (price?: number | string | null) => {
   if (price === null || price === undefined || price === "") return "N/A";
 
   if (typeof price === "number") {
-    return String(price);
+    return Number.isFinite(price) ? price.toLocaleString("ko-KR") : "N/A";
   }
 
-  const trimmed = String(price).trim();
-  return trimmed ? trimmed : "N/A";
+  const raw = String(price).trim();
+  if (!raw) return "N/A";
+
+  const numeric = Number(raw.replace(/,/g, ""));
+  if (Number.isFinite(numeric)) {
+    return numeric.toLocaleString("ko-KR");
+  }
+
+  return "N/A";
 };
 
 const getDisplayGarmentId = (item: GarmentItem) => {
