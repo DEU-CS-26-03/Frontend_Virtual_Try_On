@@ -14,13 +14,13 @@ const FavoriteButton = ({ garmentId }: Props) => {
     useEffect(() => {
         let mounted = true;
 
-        const loadFavorites = async () => {
-            const token = localStorage.getItem("accessToken");
-            if (!token) {
-                if (mounted) setLiked(false);
-                return;
-            }
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            setLiked(false);
+            return;
+        }
 
+        const loadFavorites = async () => {
             try {
                 const favorites = await getFavorites();
                 if (!mounted) return;
@@ -30,7 +30,7 @@ const FavoriteButton = ({ garmentId }: Props) => {
             }
         };
 
-        loadFavorites();
+        void loadFavorites();
 
         return () => {
             mounted = false;
