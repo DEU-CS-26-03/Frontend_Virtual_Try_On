@@ -7,23 +7,28 @@ import { getTryonStatus, type TryonStatus } from "../api/tryonApi";
 type ResultPageState = {
   tryonId?: string;
   userPreview?: string | null;
+  uploadedUserImageUrl?: string | null; // ★ 추가됨: FittingPage에서 넘어온 진짜 서버 URL
 };
 
 const ResultPage = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  // ★ 수정됨: 사용하지 않는 clothUrl 제거
-  const { tryonId, userPreview } = (state || {}) as ResultPageState;
+  // ★ 수정됨: uploadedUserImageUrl 받아오기
+  const { tryonId, userPreview, uploadedUserImageUrl } = (state || {}) as ResultPageState;
 
   const [resultImage, setResultImage] = useState<string | null>(null);
+
+  // ★ 추가됨: 새로고침 시에도 유지될 수 있도록, 폴링으로 받아온 진짜 원본 사진 URL을 저장할 상태
+  const [finalUserImage, setFinalUserImage] = useState<string | null>(
+      uploadedUserImageUrl || userPreview || null
+  );
+
   const [loading, setLoading] = useState(true);
   const [statusText, setStatusText] = useState("준비 중...");
   const [rating, setRating] = useState(0);
   const [showRec, setShowRec] = useState(false);
   const pollTimerRef = useRef<number | undefined>(undefined);
-
-  const previewImage = userPreview || null;
 
   const handleDownload = () => {
     if (!resultImage) return;
@@ -40,6 +45,16 @@ const ResultPage = () => {
     if (status === "processing") return `스타일 합성 중... (${progress}%)`;
     if (status === "completed") return "합성이 완료되었습니다.";
     return "합성에 실패했습니다.";
+  };
+
+  // 서버의 로컬 경로(/data/uploads/...)를 퍼블릭 URL로 변환해주는 헬퍼 함수
+  const getPublicUrl = (path: string | undefined | null) => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path; // 이미 완벽한 URL이면 그대로 사용
+
+    // 예: /data/uploads/person_xxx.jpg -> https://apivirtualtryon.p-e.kr/uploads/user-images/person_xxx.jpg
+    const fileName = path.split("/").pop();
+    return `https://apivirtualtryon.p-e.kr/uploads/user-images/${fileName}`;
   };
 
   useEffect(() => {
@@ -65,10 +80,17 @@ const ResultPage = () => {
 
         pollTimerRef.current = window.setInterval(async () => {
           try {
+            // ★ 수정됨: 폴링으로 가져오는 데이터에 원본 이미지 경로(userImageId)도 포함되어 있음
             const polled = await getTryonStatus(tryonId);
             if (!active) return;
 
             setStatusText(getStatusLabel(polled.status, polled.progress));
+
+            // ★ 핵심: 서버가 알려주는 진짜 원본 사진 경로가 있다면 그걸로 업데이트 (새로고침 엑박 방지)
+            if (polled.userImageId) {
+              const publicUserUrl = getPublicUrl(polled.userImageId);
+              if (publicUserUrl) setFinalUserImage(publicUserUrl);
+            }
 
             if (polled.status === "completed") {
               setResultImage(polled.resultImageUrl || null);
@@ -136,9 +158,10 @@ const ResultPage = () => {
             Original
           </span>
             <div className="relative aspect-[3/4] bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
-              {previewImage ? (
+              {/* ★ 수정됨: previewImage 대신, 서버에서 받아온 완벽한 finalUserImage를 띄움 */}
+              {finalUserImage ? (
                   <img
-                      src={previewImage}
+                      src={finalUserImage}
                       className="w-full h-full object-cover"
                       alt="Before"
                   />
@@ -171,7 +194,7 @@ const ResultPage = () => {
               ) : (
                   <>
                     <img
-                        src={resultImage || previewImage || ""}
+                        src={resultImage || finalUserImage || ""}
                         className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-1000"
                         alt="Result"
                     />
