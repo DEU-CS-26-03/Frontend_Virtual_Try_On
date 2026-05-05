@@ -11,7 +11,7 @@ const Fitting = () => {
   const navigate = useNavigate();
 
   // ★ 수정됨: 사용하지 않는 garmentId 제거
-  const { cloth, garmentId } = location.state || {};
+  const { cloth } = location.state || {};
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -24,7 +24,7 @@ const Fitting = () => {
   }, [userPreviewUrl]);
 
   const handleNext = async () => {
-    if (!file || !garmentId) {
+    if (!file || !cloth) {
       alert("내 사진과 의상을 모두 준비해주세요.");
       return;
     }
@@ -32,15 +32,18 @@ const Fitting = () => {
     try {
       setIsLoading(true);
 
-      // ★ fetch로 옷 이미지 다운받는 코드 전부 삭제!
-      // 서버가 원하는 대로 사람 사진과 옷 ID만 보냅니다.
+      // URL 옷 이미지를 다운로드하여 File 객체로 변환 (서버 에러 방지)
+      const response = await fetch(cloth);
+      const blob = await response.blob();
+      const clothFile = new File([blob], "cloth.jpg", { type: blob.type || "image/jpeg" });
+
+      // 두 개의 파일 모두 Spring으로 전송
       const job = await createTryonJob({
         personImage: file,
-        garmentId: garmentId,
+        clothImage: clothFile,
         clothType: "upper",
       });
 
-      // 성공 시 발급받은 tryonId를 들고 결과 페이지로 이동
       navigate("/result", {
         state: { tryonId: job.tryonId, userPreview: userPreviewUrl }
       });
@@ -121,7 +124,7 @@ const Fitting = () => {
           </div>
         </div>
 
-        {/* 실행 버튼 (★ 중복 버튼 제거하고 스피너 달린 버튼만 남김) */}
+        {/* 실행 버튼 */}
         <div className="flex justify-center mt-24">
           <button
               onClick={handleNext}

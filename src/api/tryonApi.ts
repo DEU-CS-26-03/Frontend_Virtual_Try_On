@@ -1,5 +1,3 @@
-
-// src/api/tryonApi.ts
 import { apiRequest, API_ROUTES } from "./client";
 
 export type TryonStatus = "queued" | "processing" | "completed" | "failed";
@@ -9,37 +7,30 @@ export interface TryonError {
   message: string;
 }
 
+// ★ 수정됨: 옷도 다시 파일(File) 형태로 서버에 전송합니다.
 export interface CreateTryonParams {
   personImage: File;
-  garmentId: string; // URL이 아닌 옷의 DB ID
+  clothImage: File;
   clothType?: string;
 }
 
 interface TryonWire {
   tryonid?: string;
   tryonId?: string;
-
   status?: string;
   progress?: number;
-
   userimageid?: string;
   userImageId?: string;
-
   garmentid?: string;
   garmentId?: string;
-
   resultid?: string;
   resultId?: string;
-
   resultimageurl?: string;
   resultImageUrl?: string;
-
   message?: string;
   error?: TryonError;
-
   createdat?: string;
   createdAt?: string;
-
   updatedat?: string;
   updatedAt?: string;
 }
@@ -60,8 +51,8 @@ export interface TryonJob {
 
 export async function createTryon(params: CreateTryonParams): Promise<TryonJob> {
   const formData = new FormData();
-  formData.append("personImage", params.personImage); // 사용자가 올린 사진
-  formData.append("garmentId", params.garmentId);     // 선택한 옷의 ID
+  formData.append("personImage", params.personImage);
+  formData.append("clothImage", params.clothImage); // 옷 파일을 직접 전송
   if (params.clothType) {
     formData.append("clothType", params.clothType);
   }
@@ -77,12 +68,10 @@ export async function createTryon(params: CreateTryonParams): Promise<TryonJob> 
 
 function normalizeStatus(status?: string): TryonStatus {
   const value = String(status || "").toLowerCase();
-
   if (value === "queued") return "queued";
   if (value === "processing") return "processing";
   if (value === "completed") return "completed";
   if (value === "failed") return "failed";
-
   return "queued";
 }
 
@@ -102,8 +91,6 @@ function fromTryonWire(data: TryonWire): TryonJob {
   };
 }
 
-
-
 export async function getTryon(tryonId: string): Promise<TryonJob> {
   const data = await apiRequest<TryonWire>(`${API_ROUTES.TRYONS}/${tryonId}`);
   return fromTryonWire(data);
@@ -120,6 +107,5 @@ export async function deleteTryon(tryonId: string): Promise<void> {
   });
 }
 
-/* 페이지에서 쓰는 이름 그대로 alias export */
 export const createTryonJob = createTryon;
 export const getTryonStatus = getTryon;
