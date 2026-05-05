@@ -19,8 +19,7 @@ export interface HomeDisplayGarment {
     price: string;
 }
 
-export type HomeCategory = "all" | "top" | "bottom" | "outer";
-
+export type HomeCategory = "all" | "top" | "bottom" | "outer" | "dress";
 interface HomePageProps {
     banners: HomeBanner[];
     currentBanner: number;
@@ -36,6 +35,13 @@ interface HomePageProps {
     uploading: boolean;
     handleFittingClick: (item: HomeDisplayGarment) => void;
 }
+const CATEGORY_LABEL_MAP: Record<HomeCategory, string> = {
+    all: "전체",
+    top: "상의",
+    bottom: "바지",
+    outer: "아우터",
+    dress: "원피스/스커트",
+};
 
 const FALLBACK_IMAGE =
     "data:image/svg+xml;utf8," +
@@ -140,7 +146,7 @@ const HomePage = ({
                                     category === c ? "text-[#111111]" : "text-gray-300"
                                 }`}
                             >
-                                {c}
+                                {CATEGORY_LABEL_MAP[c]}
                                 {category === c && (
                                     <div className="absolute -bottom-4 left-0 w-full h-[3px] bg-[#111111]" />
                                 )}
@@ -219,7 +225,7 @@ const HomePage = ({
                         ))}
 
                         {garments.length === 0 && (
-                            <div className="sm:col-span-2 lg:col-span-3 xl:col-span-3 min-h-[220px] rounded-2xl border-2 border-dashed border-gray-200 bg-white flex items-center justify-center text-gray-400 font-bold">
+                            <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4 min-h-[220px] rounded-2xl border-2 border-dashed border-gray-200 bg-white flex items-center justify-center text-gray-400 font-bold">
                                 등록된 의류가 없습니다.
                             </div>
                         )}

@@ -10,7 +10,11 @@ import {
 import { useNavigate } from "react-router-dom";
 import { createImagePresign, uploadByToken } from "../api/uploadApi";
 import { createGarment, getGarments, type GarmentItem } from "../api/garmentApi";
-import HomePage, { type HomeBanner, type HomeDisplayGarment } from "./HomePage";
+import HomePage, {
+  type HomeBanner,
+  type HomeCategory,
+  type HomeDisplayGarment,
+} from "./HomePage";
 
 const BANNER_DATA: HomeBanner[] = [
   {
@@ -29,24 +33,38 @@ const BANNER_DATA: HomeBanner[] = [
   },
 ];
 
-const UI_CATEGORIES = [
+const UI_CATEGORIES: ReadonlyArray<{ label: string; value: HomeCategory }> = [
   { label: "전체", value: "all" },
   { label: "상의", value: "top" },
-  { label: "하의", value: "bottom" },
+  { label: "바지", value: "bottom" },
   { label: "아우터", value: "outer" },
-] as const;
+  { label: "원피스/스커트", value: "dress" },
+];
 
-const CATEGORY_LABEL_MAP: Record<string, string> = {
+const CATEGORY_LABEL_MAP: Record<HomeCategory, string> = {
   all: "전체",
   top: "상의",
-  bottom: "하의",
+  bottom: "바지",
   outer: "아우터",
+  dress: "원피스/스커트",
 };
 
 const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "https://apivirtualtryon.p-e.kr";
 
-const normalizeFileUrl = (url?: string) => {
+type ExtendedGarmentItem = GarmentItem & {
+  id?: string;
+  garmentId?: string;
+  name?: string | null;
+  brandName?: string | null;
+  filename?: string | null;
+  category?: string | null;
+  fileUrl?: string | null;
+  thumbnailUrl?: string | null;
+  price?: number | string | null;
+};
+
+const normalizeFileUrl = (url?: string | null) => {
   if (!url) return "";
 
   if (url.startsWith("https://")) return url;
@@ -66,28 +84,95 @@ const normalizeFileUrl = (url?: string) => {
   return `${API_BASE_URL}/${url}`;
 };
 
-const getApiCategory = (label: string) =>
-    UI_CATEGORIES.find((item) => item.label === label)?.value ?? "all";
+const normalizeCategory = (category?: string | null): HomeCategory => {
+  const value = (category ?? "").trim().toLowerCase();
 
-const toDisplayGarment = (item: GarmentItem): HomeDisplayGarment => ({
-  garmentId: item.id,
-  name: item.brandName?.trim() || "등록 의상",
-  category: CATEGORY_LABEL_MAP[item.category] || item.category || "기타",
-  fileUrl: normalizeFileUrl(item.fileUrl),
-  price: "N/A",
-});
+  if (value === "top" || value === "상의" || value === "shirt" || value === "shirts") {
+    return "top";
+  }
+
+  if (
+      value === "bottom" ||
+      value === "하의" ||
+      value === "바지" ||
+      value === "pants" ||
+      value === "pant" ||
+      value === "shorts" ||
+      value === "trousers"
+  ) {
+    return "bottom";
+  }
+
+  if (value === "outer" || value === "아우터" || value === "jacket" || value === "coat") {
+    return "outer";
+  }
+
+  if (
+      value === "dress" ||
+      value === "원피스" ||
+      value === "onepiece" ||
+      value === "one-piece" ||
+      value === "skirt" ||
+      value === "치마" ||
+      value === "원피스/스커트"
+  ) {
+    return "dress";
+  }
+
+  return "all";
+};
+
+const getDisplayName = (item: GarmentItem) => {
+  const garment = item as ExtendedGarmentItem;
+
+  return (
+      garment.name?.trim() ||
+      garment.brandName?.trim() ||
+      garment.filename?.replace(/\.[^.]+$/, "").trim() ||
+      "이름 없음"
+  );
+};
+
+const getDisplayPrice = (price?: number | string | null) => {
+  if (price === null || price === undefined || price === "") return "N/A";
+
+  if (typeof price === "number") {
+    return String(price);
+  }
+
+  const trimmed = String(price).trim();
+  return trimmed ? trimmed : "N/A";
+};
+
+const getDisplayGarmentId = (item: GarmentItem) => {
+  const garment = item as ExtendedGarmentItem;
+  return garment.id || garment.garmentId || "";
+};
+
+const toDisplayGarment = (item: GarmentItem): HomeDisplayGarment => {
+  const garment = item as ExtendedGarmentItem;
+  const normalizedCategory = normalizeCategory(garment.category);
+
+  return {
+    garmentId: getDisplayGarmentId(item),
+    name: getDisplayName(item),
+    category: CATEGORY_LABEL_MAP[normalizedCategory],
+    fileUrl: normalizeFileUrl(garment.thumbnailUrl || garment.fileUrl),
+    price: getDisplayPrice(garment.price),
+  };
+};
 
 const Home = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [category, setCategory] = useState("전체");
+  const [category, setCategory] = useState<HomeCategory>("all");
   const [currentBanner, setCurrentBanner] = useState(0);
   const [garments, setGarments] = useState<GarmentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
-  const selectedApiCategory = useMemo(() => getApiCategory(category), [category]);
+  const selectedApiCategory = useMemo(() => category, [category]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -98,7 +183,7 @@ const Home = () => {
   }, []);
 
   const loadGarments = useCallback(
-      async (selectedCategory = selectedApiCategory) => {
+      async (selectedCategory: HomeCategory = selectedApiCategory) => {
         try {
           setLoading(true);
           const data = await getGarments(selectedCategory);
@@ -138,7 +223,9 @@ const Home = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const uploadCategory = selectedApiCategory === "all" ? "top" : selectedApiCategory;
+    const uploadCategory: HomeCategory =
+        selectedApiCategory === "all" ? "top" : selectedApiCategory;
+
     const brandNameFromFile =
         file.name.replace(/\.[^.]+$/, "").trim() || "사용자 업로드 의상";
 
@@ -176,7 +263,7 @@ const Home = () => {
           onNextBanner={() =>
               setCurrentBanner((prev) => (prev + 1) % BANNER_DATA.length)
           }
-          categories={UI_CATEGORIES.map((item) => item.label)}
+          categories={UI_CATEGORIES.map((item) => item.value)}
           category={category}
           setCategory={setCategory}
           fileInputRef={fileInputRef}

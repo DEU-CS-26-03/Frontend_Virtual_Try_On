@@ -1,22 +1,35 @@
-// src/api/garmentApi.ts
 import { apiRequest, API_ROUTES } from "./client";
 
-export type GarmentCategory = "top" | "bottom" | "outer" | "all";
+export type GarmentCategory = "top" | "bottom" | "outer" | "dress" | "all";
 
 interface GarmentWire {
     id?: string;
     garmentid?: string;
     garmentId?: string;
+    garment_id?: string;
+
     fileUrl?: string;
     fileurl?: string;
     file_url?: string;
+
+    thumbnailUrl?: string;
+    thumbnailurl?: string;
+    thumbnail_url?: string;
+
     category?: string;
+
     brandKey?: string;
     brandkey?: string;
     brand_key?: string;
+
     brandName?: string;
     brandname?: string;
     brand_name?: string;
+
+    name?: string;
+
+    price?: number | string | null;
+
     createdAt?: string;
     createdat?: string;
     created_at?: string;
@@ -25,8 +38,11 @@ interface GarmentWire {
 export interface GarmentItem {
     id: string;
     fileUrl: string;
+    thumbnailUrl?: string;
     category: string;
     brandName?: string;
+    name?: string;
+    price?: number | string | null;
     createdAt?: string;
 }
 
@@ -40,8 +56,11 @@ function normalizeCategory(category?: string): string {
 
 function fromGarmentWire(data: GarmentWire): GarmentItem {
     return {
-        id: String(data.id ?? data.garmentid ?? data.garmentId ?? ""),
+        id: String(data.id ?? data.garmentid ?? data.garmentId ?? data.garment_id ?? ""),
         fileUrl: normalizeFileUrl(data.fileUrl ?? data.fileurl ?? data.file_url),
+        thumbnailUrl: normalizeFileUrl(
+            data.thumbnailUrl ?? data.thumbnailurl ?? data.thumbnail_url
+        ),
         category: normalizeCategory(data.category),
         brandName:
             data.brandName ??
@@ -50,6 +69,8 @@ function fromGarmentWire(data: GarmentWire): GarmentItem {
             data.brandKey ??
             data.brandkey ??
             data.brand_key,
+        name: data.name,
+        price: data.price,
         createdAt: data.createdAt ?? data.createdat ?? data.created_at,
     };
 }
