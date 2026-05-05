@@ -1,30 +1,20 @@
-// src/pages/ResultPage.tsx
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Star, Download, RotateCcw, Camera } from "lucide-react";
 import Header from "../components/layout/Header";
-import { createTryonJob, getTryonStatus, type TryonStatus } from "../api/tryonApi";
+import { getTryonStatus, type TryonStatus } from "../api/tryonApi";
 
 type ResultPageState = {
-  userFile?: File | null;
-  garmentId?: string;
-  externalItemKey?: string;
+  tryonId?: string;
   userPreview?: string | null;
-  userImageId?: string;
-  uploadedUserImageUrl?: string;
 };
 
 const ResultPage = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  const {
-    garmentId,
-    externalItemKey,
-    userPreview,
-    userImageId,
-    uploadedUserImageUrl,
-  } = (state || {}) as ResultPageState;
+  // ★ 수정됨: 사용하지 않는 clothUrl 제거
+  const { tryonId, userPreview } = (state || {}) as ResultPageState;
 
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +23,7 @@ const ResultPage = () => {
   const [showRec, setShowRec] = useState(false);
   const pollTimerRef = useRef<number | undefined>(undefined);
 
-  const previewImage = userPreview || uploadedUserImageUrl || null;
+  const previewImage = userPreview || null;
 
   const handleDownload = () => {
     if (!resultImage) return;
@@ -63,39 +53,19 @@ const ResultPage = () => {
     };
 
     const runFittingWorkflow = async () => {
-      if (!userImageId || (!garmentId && !externalItemKey)) {
+      if (!tryonId) {
+        alert("잘못된 접근이거나 피팅 작업이 만료되었습니다.");
         navigate("/");
         return;
       }
 
       try {
         setLoading(true);
-        setStatusText("피팅 요청 생성 중...");
-
-        const job = await createTryonJob({
-          userImageId,
-          garmentId: garmentId ? String(garmentId) : undefined,
-          externalItemKey,
-        });
-        if (!active) return;
-
-        setStatusText(getStatusLabel(job.status, job.progress));
-
-        if (job.status === "completed") {
-          setResultImage(job.resultImageUrl || null);
-          setLoading(false);
-          return;
-        }
-
-        if (job.status === "failed") {
-          setStatusText(job.error?.message || "합성 실패. 다시 시도해 주세요.");
-          setLoading(false);
-          return;
-        }
+        setStatusText("작업 진행 상태를 확인합니다...");
 
         pollTimerRef.current = window.setInterval(async () => {
           try {
-            const polled = await getTryonStatus(job.tryonId);
+            const polled = await getTryonStatus(tryonId);
             if (!active) return;
 
             setStatusText(getStatusLabel(polled.status, polled.progress));
@@ -130,7 +100,7 @@ const ResultPage = () => {
       active = false;
       clearPolling();
     };
-  }, [userImageId, garmentId, externalItemKey, navigate]);
+  }, [tryonId, navigate]);
 
   return (
       <div className="min-h-screen bg-[#F5F5F3] pb-32 font-sans text-[#111111]">

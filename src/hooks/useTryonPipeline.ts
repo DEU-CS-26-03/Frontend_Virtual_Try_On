@@ -64,13 +64,20 @@ export function useTryonPipeline() {
     }, [stopPolling]);
 
     const run = useCallback(
-        async (userImageId: string, garmentId: string) => {
+        // 파라미터를 실제 File 객체로 변경
+        async (personImage: File, clothImage: File, clothType: string = "upper") => {
             stopPolling();
             pollCount.current = 0;
             setState({ status: "submitting", job: null, errorMessage: null });
 
             try {
-                const job = await createTryon({ userImageId, garmentId });
+                // 객체 프로퍼티 매칭 에러 해결
+                const job = await createTryon({
+                    personImage,
+                    clothImage,
+                    clothType
+                });
+
                 setState({ status: "polling", job, errorMessage: null });
                 poll(job.tryonId);
             } catch (e) {

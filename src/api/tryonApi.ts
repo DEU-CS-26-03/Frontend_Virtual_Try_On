@@ -10,9 +10,9 @@ export interface TryonError {
 }
 
 export interface CreateTryonParams {
-  userImageId: string;
-  garmentId?: string;       // 선택적 필드
-  externalItemKey?: string;  // 선택적 필드
+  personImage: File;
+  clothImage: File;
+  clothType?: string;
 }
 
 interface TryonWire {
@@ -59,18 +59,17 @@ export interface TryonJob {
 }
 
 export async function createTryon(params: CreateTryonParams): Promise<TryonJob> {
-  // 이제 params의 타입을 정상적으로 인식합니다.
-  if (!params.garmentId && !params.externalItemKey) {
-    throw new Error("garmentId 또는 externalItemKey 중 하나는 필요합니다.");
+  const formData = new FormData();
+  formData.append("personImage", params.personImage);
+  formData.append("clothImage", params.clothImage);
+  if (params.clothType) {
+    formData.append("clothType", params.clothType);
   }
 
   const data = await apiRequest<TryonWire>(API_ROUTES.TRYONS, {
     method: "POST",
-    body: JSON.stringify({
-      userImageId:    params.userImageId,
-      garmentId:      params.garmentId,
-      externalItemId: params.externalItemKey,
-    }),
+    body: formData,
+    isFormData: true, // client.ts에 FormData 전송 처리가 되어있어야 합니다 (보통 Content-Type 자동 생략)
   });
 
   return fromTryonWire(data);
