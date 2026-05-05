@@ -27,8 +27,14 @@ interface GarmentWire {
     brand_name?: string;
 
     name?: string;
+    garmentName?: string;
+    garmentname?: string;
+    garment_name?: string;
 
     price?: number | string | null;
+    garmentPrice?: number | string | null;
+    garmentprice?: number | string | null;
+    garment_price?: number | string | null;
 
     createdAt?: string;
     createdat?: string;
@@ -46,32 +52,66 @@ export interface GarmentItem {
     createdAt?: string;
 }
 
-function normalizeFileUrl(url?: string): string {
+function normalizeText(value?: string | null): string | undefined {
+    const normalized = String(value ?? "").trim();
+    return normalized || undefined;
+}
+
+function normalizeFileUrl(url?: string | null): string {
     return String(url ?? "").trim();
 }
 
-function normalizeCategory(category?: string): string {
+function normalizeCategory(category?: string | null): string {
     return String(category ?? "").trim().toLowerCase();
+}
+
+function normalizePrice(value?: number | string | null): number | string | null | undefined {
+    if (value === null || value === undefined || value === "") return null;
+
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? value : null;
+    }
+
+    const trimmed = String(value).trim();
+    if (!trimmed) return null;
+
+    const numeric = Number(trimmed.replace(/,/g, ""));
+    if (Number.isFinite(numeric)) {
+        return numeric;
+    }
+
+    return trimmed;
 }
 
 function fromGarmentWire(data: GarmentWire): GarmentItem {
     return {
         id: String(data.id ?? data.garmentid ?? data.garmentId ?? data.garment_id ?? ""),
         fileUrl: normalizeFileUrl(data.fileUrl ?? data.fileurl ?? data.file_url),
-        thumbnailUrl: normalizeFileUrl(
+        thumbnailUrl: normalizeText(
             data.thumbnailUrl ?? data.thumbnailurl ?? data.thumbnail_url
         ),
         category: normalizeCategory(data.category),
-        brandName:
+        brandName: normalizeText(
             data.brandName ??
             data.brandname ??
             data.brand_name ??
             data.brandKey ??
             data.brandkey ??
-            data.brand_key,
-        name: data.name,
-        price: data.price,
-        createdAt: data.createdAt ?? data.createdat ?? data.created_at,
+            data.brand_key
+        ),
+        name: normalizeText(
+            data.name ??
+            data.garmentName ??
+            data.garmentname ??
+            data.garment_name
+        ),
+        price: normalizePrice(
+            data.price ??
+            data.garmentPrice ??
+            data.garmentprice ??
+            data.garment_price
+        ),
+        createdAt: normalizeText(data.createdAt ?? data.createdat ?? data.created_at),
     };
 }
 
