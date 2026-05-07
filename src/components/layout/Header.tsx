@@ -50,7 +50,7 @@ const Header = () => {
 
   const token = (() => {
     try {
-      return localStorage.getItem("accessToken");
+      return sessionStorage.getItem("accessToken"); 
     } catch {
       return null;
     }
@@ -73,7 +73,7 @@ const Header = () => {
       return;
     }
 
-    localStorage.removeItem("accessToken");
+    sessionStorage.removeItem("accessToken"); 
     navigate("/");
     window.location.reload();
   };
@@ -94,11 +94,14 @@ const Header = () => {
           </div>
 
           <nav className="hidden md:flex items-center gap-14">
-            {["SHOP", "VIRTUAL FITTING", "COLLECTION", "MY HISTORY"].map((menu) => (
+            {["SHOP", "VIRTUAL FITTING", "RATE COLLECTION", "MY HISTORY"].map((menu) => (
                 <button
                     key={menu}
                     onClick={(e) => {
                       e.preventDefault();
+                      if (menu === "SHOP"){
+
+                      }
 
                       if (menu === "VIRTUAL FITTING") {
                         navigate("/fitting");

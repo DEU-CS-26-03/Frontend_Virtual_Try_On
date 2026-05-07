@@ -55,7 +55,7 @@ const LoginPage = () => {
         throw new ApiError(data.message || "토큰이 응답에 없습니다.", 401, data);
       }
 
-      localStorage.setItem("accessToken", token);
+      sessionStorage.setItem("accessToken", token);
       alert("로그인 성공!");
       navigate("/", { replace: true });
     } catch (error) {
