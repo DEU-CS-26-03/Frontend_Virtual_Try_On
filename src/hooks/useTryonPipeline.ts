@@ -1,6 +1,6 @@
 // src/hooks/useTryonPipeline.ts
 import { useState, useRef, useCallback } from "react";
-import { createTryon, getTryon, type TryonJob,} from "../api/tryonApi";
+import { createTryon, getTryon, type TryonJob, type ClothCategory } from "../api/tryonApi";
 
 interface PipelineState {
     status: "idle" | "submitting" | "polling" | "done" | "error";
@@ -64,14 +64,13 @@ export function useTryonPipeline() {
     }, [stopPolling]);
 
     const run = useCallback(
-        // 파라미터를 실제 File 객체로 변경
-        async (personImage: File, clothImage: File, clothType: string = "upper") => {
+        async (personImage: File, clothImage: File, clothType: ClothCategory = "upper") => {
             stopPolling();
             pollCount.current = 0;
             setState({ status: "submitting", job: null, errorMessage: null });
 
             try {
-                // 객체 프로퍼티 매칭 에러 해결
+                // 이제 clothType의 타입이 일치하므로 에러가 사라집니다.
                 const job = await createTryon({
                     personImage,
                     clothImage,

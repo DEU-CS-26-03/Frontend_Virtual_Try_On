@@ -6,11 +6,13 @@ export interface TryonError {
   code: string;
   message: string;
 }
+export type ClothCategory = "upper" | "lower" | "overall";
 
 export interface CreateTryonParams {
   personImage: File;
   clothImage: File;
-  clothType?: string;
+  // 기존 string에서 ClothCategory로 변경하여 안정성 강화
+  clothType: ClothCategory;
 }
 
 export interface TryonJob {
@@ -62,11 +64,9 @@ export async function createTryon(params: CreateTryonParams): Promise<TryonJob> 
   const formData = new FormData();
   formData.append("personImage", params.personImage);
   formData.append("clothImage", params.clothImage);
-  if (params.clothType) {
-    formData.append("clothType", params.clothType);
-  }
 
-  // any 대신 명시적 타입 적용
+  formData.append("clothType", params.clothType);
+
   const data = await apiRequest<TryonResponsePayload>(API_ROUTES.TRYONS, {
     method: "POST",
     body: formData,
