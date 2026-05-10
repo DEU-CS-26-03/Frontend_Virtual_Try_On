@@ -82,21 +82,34 @@ const HistoryPage = () => {
 
     const loadHistory = async () => {
       try {
-        const tryons = await getTryonList();
+      // 1. 전체 리스트를 가져옵니다. 
+      // (서버가 비로그인 유저에게도 리스트 조회를 허용한다는 전제)
+      const tryons = await getTryonList();
 
-        if (!cancelled) {
-          setHistory(tryons);
+      if (!cancelled) {
+        let myFilteredHistory = [];
+
+        // 2. 로그인 유저라면? (JWT의 userId와 비교)
+        if (user?.id) {
+          myFilteredHistory = tryons.filter(
+            (item) => String(item.userId) === String(user.id)
+          );
+        } 
+        // 3. 비로그인 유저라면? (세션에 담긴 guestTryonIds와 비교)
+        else {
+          const guestIds: string[] = JSON.parse(sessionStorage.getItem("guestTryonIds") || "[]");
+          myFilteredHistory = tryons.filter(
+            (item) => guestIds.includes(item.tryonId)
+          );
         }
+
+        setHistory(myFilteredHistory);
+      }
       } catch (error: unknown) {
         console.error("history load error:", error);
-
-        if (!cancelled) {
-          alert("히스토리를 불러오지 못했습니다.");
-        }
+        if (!cancelled) alert("히스토리를 불러오지 못했습니다.");
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     };
 

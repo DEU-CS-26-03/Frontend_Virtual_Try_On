@@ -61,6 +61,12 @@ const FittingPage = () => {
                 clothType: clothType, // "upper" | "lower" | "overall"
             });
 
+            // 로그인 안 했을 때만 세션에 tryonId 저장
+            if (!sessionStorage.getItem("accessToken")) {
+                const guestIds = JSON.parse(sessionStorage.getItem("guestTryonIds") || "[]");
+                sessionStorage.setItem("guestTryonIds", JSON.stringify([...guestIds, job.tryonId]));
+            }
+
             if (!job || !job.tryonId) {
                 throw new Error("Job ID가 생성되지 않았습니다.");
             }

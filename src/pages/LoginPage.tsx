@@ -16,7 +16,7 @@ const LoginPage = () => {
       setSubmitting(true);
 
       if (email === "capstone@gmail.com" && password === "1234") {
-        localStorage.setItem("accessToken", "capstone-test-token");
+        sessionStorage.setItem("accessToken", "capstone-test-token");
         alert("테스트 계정으로 로그인되었습니다.");
         navigate("/", { replace: true });
         return;
@@ -55,7 +55,7 @@ const LoginPage = () => {
         throw new ApiError(data.message || "토큰이 응답에 없습니다.", 401, data);
       }
 
-      localStorage.setItem("accessToken", token);
+      sessionStorage.setItem("accessToken", token);
       alert("로그인 성공!");
       navigate("/", { replace: true });
     } catch (error) {

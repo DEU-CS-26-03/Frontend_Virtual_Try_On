@@ -17,6 +17,7 @@ export interface CreateTryonParams {
 
 export interface TryonJob {
   tryonId: string;
+  userId?: number;
   status: TryonStatus;
   progress: number;
   userImageId?: string;
@@ -36,6 +37,8 @@ interface TryonResponsePayload {
   tryonId?: string;
   tryon_id?: string;
   id?: string;
+  userId?: number;    // 카멜 케이스 대비
+  user_id?: number;   // 스네이크 케이스 대비
   status?: string;
   progress?: number;
   userimageid?: string;
@@ -91,6 +94,7 @@ function fromTryonWire(payload: TryonResponsePayload): TryonJob {
 
   return {
     tryonId: String(data?.tryonid ?? data?.tryonId ?? data?.tryon_id ?? data?.id ?? ""),
+    userId: data?.userId ?? data?.user_id ?? 0,
     status: normalizeStatus(data?.status),
     progress: Number(data?.progress ?? 0),
     userImageId: data?.userimageid ?? data?.userImageId ?? data?.user_image_id,
