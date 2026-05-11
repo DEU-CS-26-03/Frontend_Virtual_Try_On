@@ -29,15 +29,19 @@ const ResultPage = () => {
   // ★ 에러 해결: 부위별 상태 문구를 생성하는 핵심 함수
   const getStatusLabel = (status: string, type?: ClothCategory): string => {
     const s = status.toLowerCase();
-    if (s === "queued") return "서버 대기열에서 차례를 기다리고 있습니다...";
+    if (s === "queued") return "대기열에서 순서를 기다리는 중입니다...";
+
     if (s === "processing") {
-      if (type === "lower") return "AI가 하체 라인에 맞춰 Bottom(하의)을 정밀 합성 중입니다...";
-      if (type === "overall") return "AI가 전신 체형을 분석하여 Onepiece(원피스) 핏을 맞추는 중입니다...";
-      return "AI가 상체 어깨와 소매 라인을 따라 Top(상의)을 매칭 중입니다...";
+      // 사용자가 선택한 카테고리에 따른 맞춤형 멘트
+      switch (type) {
+        case "lower": return "AI가 하체 체형을 분석하여 하의를 합성 중입니다...";
+        case "overall": return "AI가 전신 실루엣에 맞춰 원피스를 정밀 피팅 중입니다...";
+        default: return "AI가 어깨 라인과 소매를 따라 상의를 매칭 중입니다...";
+      }
     }
-    if (s === "completed") return "스타일 변신 완료!";
-    if (s === "failed") return "합성에 실패했습니다. 사진 품질을 확인하세요.";
-    return "준비 중...";
+
+    if (s === "completed") return "가상 피팅이 완료되었습니다!";
+    return "합성에 실패했습니다. 사진을 다시 확인해주세요.";
   };
 
   const handleDownload = () => {

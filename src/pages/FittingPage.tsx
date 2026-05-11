@@ -1,8 +1,7 @@
-// src/pages/FittingPage.tsx
 import { useState, useMemo, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronLeft, Loader2, Info } from "lucide-react";
-import { createTryonJob, type ClothCategory } from "../api/tryonApi"; // ClothCategory 타입 추가됨
+import { createTryonJob, type ClothCategory } from "../api/tryonApi";
 import UploadBox from "../components/upload/UploadBox";
 import UploadButton from "../components/upload/UploadButton";
 import Header from "../components/layout/Header";
@@ -13,8 +12,20 @@ const FittingPage = () => {
 
     // 홈에서 넘어온 데이터들
     const { cloth, category } = location.state || {};
+
+    // 카테고리 자동 판별 (기본값 설정용)
+    const getMappedCategory = (cat: string): ClothCategory => {
+        const lowerCat = String(cat || "").toLowerCase();
+        if (lowerCat.includes("dress") || lowerCat.includes("onepiece")) return "overall";
+        if (lowerCat.includes("pants") || lowerCat.includes("skirt") || lowerCat.includes("lower")) return "lower";
+        return "upper";
+    };
+
+    // 상태 관리
     const [file, setFile] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    // ★ 에러 방지: 렌더링 시점에 자동 판별된 값을 초기값으로 세팅
+    const [selectedCategory, setSelectedCategory] = useState<ClothCategory>(getMappedCategory(category));
 
     const userPreviewUrl = useMemo(() => {
         return file ? URL.createObjectURL(file) : null;
@@ -23,14 +34,6 @@ const FittingPage = () => {
     useEffect(() => {
         return () => { if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl); };
     }, [userPreviewUrl]);
-
-    // ★ 추가된 로직: 카테고리 자동 판별 (데이터가 없을 경우 대비)
-    const getMappedCategory = (cat: string): ClothCategory => {
-        const lowerCat = String(cat || "").toLowerCase();
-        if (lowerCat.includes("dress") || lowerCat.includes("onepiece")) return "overall";
-        if (lowerCat.includes("pants") || lowerCat.includes("skirt") || lowerCat.includes("lower")) return "lower";
-        return "upper"; // 기본값 상의
-    };
 
     const handleNext = async () => {
         if (!file || !cloth) {
@@ -41,8 +44,8 @@ const FittingPage = () => {
         try {
             setIsLoading(true);
 
-            // 1. 의류 이미지 다운로드 (백엔드가 File을 원하므로 URL을 파일로 변환)
-            const backendBaseUrl = "https://apivirtualtryon.p-e.kr"; // 캡스톤 서버 주소
+            // 1. 의류 이미지 다운로드
+            const backendBaseUrl = "https://apivirtualtryon.p-e.kr";
             const targetClothUrl = cloth.startsWith("http") ? cloth : backendBaseUrl + cloth;
 
             const response = await fetch(targetClothUrl);
@@ -51,17 +54,14 @@ const FittingPage = () => {
             const blob = await response.blob();
             const clothFile = new File([blob], "cloth.jpg", { type: "image/jpeg" });
 
-            // 2. 카테고리 결정
-            const clothType = getMappedCategory(category);
-
-            // 3. 피팅 작업 요청
+            // 2. 피팅 작업 요청 (사용자가 선택한 카테고리 전송)
             const job = await createTryonJob({
                 personImage: file,
                 clothImage: clothFile,
-                clothType: clothType, // "upper" | "lower" | "overall"
+                clothType: selectedCategory, // ★ 수정됨: selectedCategory 사용
             });
 
-            // 로그인 안 했을 때만 세션에 tryonId 저장
+            // 3. 세션 저장
             if (!sessionStorage.getItem("accessToken")) {
                 const guestIds = JSON.parse(sessionStorage.getItem("guestTryonIds") || "[]");
                 sessionStorage.setItem("guestTryonIds", JSON.stringify([...guestIds, job.tryonId]));
@@ -71,18 +71,18 @@ const FittingPage = () => {
                 throw new Error("Job ID가 생성되지 않았습니다.");
             }
 
-            // 4. 결과 페이지로 이동 (폴링은 결과 페이지에서 수행)
+            // 4. 결과 페이지로 이동
             navigate("/result", {
                 state: {
                     tryonId: job.tryonId,
                     userPreview: userPreviewUrl,
-                    clothType: clothType
+                    clothType: selectedCategory // ★ 선택한 타입을 결과 페이지로 넘김
                 }
             });
 
         } catch (error) {
             console.error("피팅 요청 실패:", error);
-            alert("가상 피팅 서버와 통신에 실패했습니다. (서버 사양/네트워크 확인 필요)");
+            alert("가상 피팅 서버와 통신에 실패했습니다.");
         } finally {
             setIsLoading(false);
         }
@@ -103,21 +103,21 @@ const FittingPage = () => {
                             {/* 배경: 내 사진 (흐릿하게) */}
                             <img src={userPreviewUrl} className="w-full h-full object-cover opacity-50" alt="User" />
 
-                            {/* 오버레이: 선택한 옷 (부위에 따라 위치 자동 보정) */}
+                            {/* 오버레이: 선택한 옷 (선택된 카테고리에 따라 위치 이동) */}
                             <div className="absolute inset-0 flex items-center justify-center p-4">
                                 <img
                                     src={cloth}
                                     className={`w-full h-auto object-contain drop-shadow-2xl animate-pulse transition-all duration-700
-                            ${getMappedCategory(category) === 'upper' ? 'translate-y-[-20%] scale-110' : ''}
-                            ${getMappedCategory(category) === 'lower' ? 'translate-y-[20%] scale-110' : ''}
-                            ${getMappedCategory(category) === 'overall' ? 'scale-100' : ''}
-                        `}
+                                        ${selectedCategory === 'upper' ? 'translate-y-[-20%] scale-110' : ''}
+                                        ${selectedCategory === 'lower' ? 'translate-y-[20%] scale-110' : ''}
+                                        ${selectedCategory === 'overall' ? 'scale-100' : ''}
+                                    `}
                                     alt="Cloth Overlay"
                                 />
                             </div>
                         </div>
                         <p className="text-[9px] text-gray-400 mt-3 text-center font-bold uppercase">
-                            {getMappedCategory(category)} Mode Applied
+                            {selectedCategory} Mode Applied
                         </p>
                     </div>
                 </div>
@@ -154,21 +154,47 @@ const FittingPage = () => {
                     </div>
                 </div>
 
-                {/* Step 2: Selected Item */}
+                {/* Step 2: Selected Item & Mode Selection */}
                 <div className="flex flex-col">
                     <div className="flex justify-between items-end mb-6 px-2">
                         <span className="text-[11px] font-[1000] tracking-[0.3em] text-gray-300 uppercase">Step 02</span>
                         <h2 className="text-xl font-black">선택한 의상</h2>
                     </div>
-                    <div className="h-[600px] bg-white rounded-3xl border border-gray-100 flex items-center justify-center p-16 shadow-sm relative">
+
+                    {/* 의상 이미지 박스 */}
+                    <div className="h-[480px] bg-white rounded-3xl border border-gray-100 flex items-center justify-center p-12 shadow-sm relative">
                         <img src={cloth} className="max-w-full max-h-full object-contain drop-shadow-2xl" alt="Selected" />
                         <div className="absolute bottom-6 left-6 right-6 p-4 bg-[#F5F5F3] rounded-2xl border border-gray-200 flex items-center gap-3">
                             <Info size={16} className="text-gray-400" />
-                            <p className="text-[10px] text-gray-500 font-bold leading-tight">AI가 의상의 형태를 분석하여<br/>{getMappedCategory(category)} 모드로 처리합니다.</p>
+                            <p className="text-[10px] text-gray-500 font-bold leading-tight">
+                                아래 버튼을 눌러 옷이 입혀질 부위를 직접 선택하세요.
+                            </p>
                         </div>
                     </div>
-                    <div className="mt-8">
-                        <button onClick={() => navigate("/")} className="w-full py-5 bg-transparent border-2 border-[#111111] rounded-2xl font-black text-xs tracking-widest hover:bg-[#111111] hover:text-white transition-all">
+
+                    {/* ★ 추가됨: 피팅 부위 선택 버튼 (의상 박스 바로 아래) */}
+                    <div className="mt-6 grid grid-cols-3 gap-3">
+                        {[
+                            { id: "upper", label: "상의 (Top)" },
+                            { id: "lower", label: "하의 (Bottom)" },
+                            { id: "overall", label: "전신 (Overall)" }
+                        ].map((cat) => (
+                            <button
+                                key={cat.id}
+                                onClick={() => setSelectedCategory(cat.id as ClothCategory)}
+                                className={`py-4 rounded-xl text-xs font-black tracking-widest transition-all shadow-sm ${
+                                    selectedCategory === cat.id
+                                        ? "bg-[#2563EB] text-white ring-4 ring-[#2563EB]/20 scale-105"
+                                        : "bg-white border border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+                                }`}
+                            >
+                                {cat.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="mt-4">
+                        <button onClick={() => navigate("/")} className="w-full py-4 bg-transparent text-gray-400 font-bold text-[11px] hover:text-[#111111] transition-all underline underline-offset-4">
                             다른 아이템 선택하기
                         </button>
                     </div>
@@ -176,7 +202,7 @@ const FittingPage = () => {
             </div>
 
             {/* 실행 버튼 */}
-            <div className="flex justify-center mt-24">
+            <div className="flex justify-center mt-20">
                 <button
                     onClick={handleNext}
                     disabled={!file || isLoading}
