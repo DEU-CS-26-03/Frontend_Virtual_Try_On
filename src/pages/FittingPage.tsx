@@ -1,7 +1,7 @@
 // src/pages/FittingPage.tsx
 import { useState, useMemo, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Zap, ChevronLeft, Loader2, Info } from "lucide-react";
+import { ChevronLeft, Loader2, Info } from "lucide-react";
 import { createTryonJob, type ClothCategory } from "../api/tryonApi"; // ClothCategory 타입 추가됨
 import UploadBox from "../components/upload/UploadBox";
 import UploadButton from "../components/upload/UploadButton";
@@ -92,19 +92,33 @@ const FittingPage = () => {
         <div className="min-h-screen bg-[#F5F5F3] pb-32 font-sans text-[#111111]">
             <Header />
 
-            {/* AI 실시간 미리보기 (우측 고정 패널) */}
+            {/* AI 실시간 미리보기: Ghost Overlay 방식 */}
             {userPreviewUrl && cloth && (
                 <div className="fixed top-28 right-12 z-50 w-56 hidden xl:block animate-in fade-in slide-in-from-right-10 duration-700">
                     <div className="bg-white/80 backdrop-blur-xl p-5 rounded-[2rem] shadow-2xl border border-white">
-                        <p className="text-[10px] font-black tracking-[0.2em] text-[#2563EB] uppercase mb-4 text-center flex items-center justify-center gap-1">
-                            <Zap size={12} fill="currentColor" /> AI 카테고리: {getMappedCategory(category)}
+                        <p className="text-[10px] font-black tracking-[0.2em] text-[#2563EB] uppercase mb-4 text-center">
+                            Style Simulation
                         </p>
                         <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-100">
-                            <img src={userPreviewUrl} className="w-full h-full object-cover opacity-40" alt="User" />
+                            {/* 배경: 내 사진 (흐릿하게) */}
+                            <img src={userPreviewUrl} className="w-full h-full object-cover opacity-50" alt="User" />
+
+                            {/* 오버레이: 선택한 옷 (부위에 따라 위치 자동 보정) */}
                             <div className="absolute inset-0 flex items-center justify-center p-4">
-                                <img src={cloth} className="w-full h-auto object-contain drop-shadow-2xl animate-pulse" alt="Cloth" />
+                                <img
+                                    src={cloth}
+                                    className={`w-full h-auto object-contain drop-shadow-2xl animate-pulse transition-all duration-700
+                            ${getMappedCategory(category) === 'upper' ? 'translate-y-[-20%] scale-110' : ''}
+                            ${getMappedCategory(category) === 'lower' ? 'translate-y-[20%] scale-110' : ''}
+                            ${getMappedCategory(category) === 'overall' ? 'scale-100' : ''}
+                        `}
+                                    alt="Cloth Overlay"
+                                />
                             </div>
                         </div>
+                        <p className="text-[9px] text-gray-400 mt-3 text-center font-bold uppercase">
+                            {getMappedCategory(category)} Mode Applied
+                        </p>
                     </div>
                 </div>
             )}
