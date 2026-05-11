@@ -27,7 +27,7 @@ const Fitting = () => {
   }, [file]);
 
   useEffect(() => {
-    return () => { if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl); };
+    //return () => { if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl); };
   }, [userPreviewUrl]);
 
   const handleNext = async () => {

@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Star, Download, RotateCcw, Camera, CheckCircle2, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import Header from "../components/layout/Header";
 import { getTryonStatus } from "../api/tryonApi";
-import type { TryonStatus, ClothCategory } from "../api/tryonApi";
+// ★ 에러 해결: TryonStatus는 여기서 안 쓰므로 지우고 ClothCategory만 남겼습니다.
+import type { ClothCategory } from "../api/tryonApi";
 
 type ResultPageState = {
   tryonId?: string;
@@ -12,15 +13,23 @@ type ResultPageState = {
   clothType?: ClothCategory;
 };
 
-// ★ 캡스톤 시연용 더미 데이터 (나중에 Spring API로 교체 가능)
-const mockSimilarItems = [
+// ★ 에러 해결: 'any' 대신 사용할 명확한 추천 상품 타입(Interface)을 만들었습니다.
+interface RecommendItem {
+  id: number;
+  brand: string;
+  name: string;
+  img: string;
+}
+
+// 캡스톤 시연용 더미 데이터
+const mockSimilarItems: RecommendItem[] = [
   { id: 1, brand: "MINIMALIST", name: "베이직 라운드 니트", img: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=300&q=80" },
   { id: 2, brand: "URBAN STUDIO", name: "소프트 코튼 티셔츠", img: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&q=80" },
   { id: 3, brand: "ESSENTIAL", name: "스탠다드 핏 셔츠", img: "https://images.unsplash.com/photo-1596755094514-f87e32f85e23?w=300&q=80" },
   { id: 4, brand: "MINIMALIST", name: "오버핏 하프넥 셔츠", img: "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=300&q=80" },
 ];
 
-const mockDifferentItems = [
+const mockDifferentItems: RecommendItem[] = [
   { id: 5, brand: "STREET VIBE", name: "와이드 데님 팬츠", img: "https://images.unsplash.com/photo-1542272604-780c9685b5bf?w=300&q=80" },
   { id: 6, brand: "NEW ERA", name: "그래픽 오버핏 반팔", img: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=300&q=80" },
   { id: 7, brand: "CHIC CASUAL", name: "플리츠 롱 스커트", img: "https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=300&q=80" },
@@ -95,8 +104,10 @@ const ResultPage = () => {
           setStatusText(getStatusLabel(polled.status, clothType));
 
           if (polled.userImageId) {
-            const url = getPublicUrl(polled.userImageId);
-            if (url) setFinalUserImage(url);
+            const serverUrl = getPublicUrl(polled.userImageId);
+            if (serverUrl && finalUserImage !== serverUrl) {
+              setFinalUserImage(serverUrl);
+            }
           }
 
           if (polled.status.toLowerCase() === "completed") {
@@ -113,11 +124,10 @@ const ResultPage = () => {
 
     runPolling();
     return () => { active = false; clearPolling(); };
-  }, [tryonId, navigate, clothType]);
+  }, [tryonId, navigate, clothType, finalUserImage]); // 의존성 배열 보완
 
-  // ★ 추천 상품 클릭 핸들러 (홈이나 디테일 페이지로 이동)
-  const handleRecommendClick = (item: any) => {
-    // 실제 서비스에서는 해당 상품 ID를 가지고 피팅 페이지로 다시 이동
+  // ★ 에러 해결: (item: any) 를 (item: RecommendItem) 으로 바꿔 TypeScript 경고 소멸
+  const handleRecommendClick = (item: RecommendItem) => {
     alert(`${item.brand}의 [${item.name}] 상품으로 이동합니다!`);
   };
 
@@ -197,7 +207,7 @@ const ResultPage = () => {
                   </div>
                 </div>
 
-                {/* ★ 동적 추천 렌더링 영역 */}
+                {/* 동적 추천 렌더링 영역 */}
                 {showRec && (
                     <div className="border-t border-gray-800 pt-16 animate-in slide-in-from-bottom-8 duration-700">
                       <div className="flex justify-between items-end mb-8">
