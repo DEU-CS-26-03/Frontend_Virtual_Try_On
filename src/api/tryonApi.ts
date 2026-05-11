@@ -6,13 +6,14 @@ export interface TryonError {
   code: string;
   message: string;
 }
+
+// ★ 의류 카테고리 타입 명시
 export type ClothCategory = "upper" | "lower" | "overall";
 
 export interface CreateTryonParams {
   personImage: File;
   clothImage: File;
-  // 기존 string에서 ClothCategory로 변경하여 안정성 강화
-  clothType: ClothCategory;
+  clothType: ClothCategory; // ★ string 대신 명확한 타입 적용
 }
 
 export interface TryonJob {
@@ -30,15 +31,14 @@ export interface TryonJob {
   updatedAt?: string;
 }
 
-// ★ 추가됨: any를 대체하기 위해 백엔드의 모든 응답 케이스를 커버하는 인터페이스 선언
 interface TryonResponsePayload {
-  data?: TryonResponsePayload; // { data: { ... } } 형태로 올 경우 방어
+  data?: TryonResponsePayload;
   tryonid?: string;
   tryonId?: string;
   tryon_id?: string;
   id?: string;
-  userId?: number;    // 카멜 케이스 대비
-  user_id?: number;   // 스네이크 케이스 대비
+  userId?: number;
+  user_id?: number;
   status?: string;
   progress?: number;
   userimageid?: string;
@@ -67,7 +67,7 @@ export async function createTryon(params: CreateTryonParams): Promise<TryonJob> 
   const formData = new FormData();
   formData.append("personImage", params.personImage);
   formData.append("clothImage", params.clothImage);
-
+  // ★ 프론트엔드(Fitting.tsx)에서 선택한 값이 그대로 담김
   formData.append("clothType", params.clothType);
 
   const data = await apiRequest<TryonResponsePayload>(API_ROUTES.TRYONS, {
@@ -88,7 +88,6 @@ function normalizeStatus(status?: string): TryonStatus {
   return "queued";
 }
 
-// any 대신 명시적 타입 적용
 function fromTryonWire(payload: TryonResponsePayload): TryonJob {
   const data = payload?.data ? payload.data : payload;
 
@@ -109,13 +108,11 @@ function fromTryonWire(payload: TryonResponsePayload): TryonJob {
 }
 
 export async function getTryon(tryonId: string): Promise<TryonJob> {
-  // any 대신 명시적 타입 적용
   const data = await apiRequest<TryonResponsePayload>(`${API_ROUTES.TRYONS}/${tryonId}`);
   return fromTryonWire(data);
 }
 
 export async function getTryonList(): Promise<TryonJob[]> {
-  // any[] 대신 명시적 배열 타입 적용
   const data = await apiRequest<TryonResponsePayload[]>(API_ROUTES.TRYONS);
   return (data || []).map(fromTryonWire);
 }
