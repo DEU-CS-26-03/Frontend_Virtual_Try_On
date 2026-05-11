@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Star, Download, RotateCcw, Camera, CheckCircle2, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import Header from "../components/layout/Header";
 import { getTryonStatus } from "../api/tryonApi";
-// ★ 에러 해결: TryonStatus는 여기서 안 쓰므로 지우고 ClothCategory만 남겼습니다.
 import type { ClothCategory } from "../api/tryonApi";
 
 type ResultPageState = {
@@ -13,28 +12,24 @@ type ResultPageState = {
   clothType?: ClothCategory;
 };
 
-// ★ 에러 해결: 'any' 대신 사용할 명확한 추천 상품 타입(Interface)을 만들었습니다.
+// 프론트엔드에서 사용할 추천 아이템 구조
 interface RecommendItem {
-  id: number;
-  brand: string;
+  id: string;
+  brandName: string;
+  category: string;
   name: string;
-  img: string;
+  fileUrl: string;
 }
 
-// 캡스톤 시연용 더미 데이터
-const mockSimilarItems: RecommendItem[] = [
-  { id: 1, brand: "MINIMALIST", name: "베이직 라운드 니트", img: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=300&q=80" },
-  { id: 2, brand: "URBAN STUDIO", name: "소프트 코튼 티셔츠", img: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&q=80" },
-  { id: 3, brand: "ESSENTIAL", name: "스탠다드 핏 셔츠", img: "https://images.unsplash.com/photo-1596755094514-f87e32f85e23?w=300&q=80" },
-  { id: 4, brand: "MINIMALIST", name: "오버핏 하프넥 셔츠", img: "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=300&q=80" },
-];
-
-const mockDifferentItems: RecommendItem[] = [
-  { id: 5, brand: "STREET VIBE", name: "와이드 데님 팬츠", img: "https://images.unsplash.com/photo-1542272604-780c9685b5bf?w=300&q=80" },
-  { id: 6, brand: "NEW ERA", name: "그래픽 오버핏 반팔", img: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=300&q=80" },
-  { id: 7, brand: "CHIC CASUAL", name: "플리츠 롱 스커트", img: "https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=300&q=80" },
-  { id: 8, brand: "MODERN", name: "크롭 레더 자켓", img: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=300&q=80" },
-];
+// ★ 추가됨: 백엔드(Spring) API에서 보내주는 원본 JSON 데이터 규격 선언 ('any' 에러 해결)
+interface GarmentApiResponse {
+  garmentId?: string;
+  id?: string;
+  brandKey?: string;
+  category?: string;
+  name?: string;
+  fileUrl?: string;
+}
 
 const ResultPage = () => {
   const { state } = useLocation();
@@ -43,12 +38,17 @@ const ResultPage = () => {
   const { tryonId, userPreview, uploadedUserImageUrl, clothType } = (state || {}) as ResultPageState;
 
   const [resultImage, setResultImage] = useState<string | null>(null);
-  const [finalUserImage, setFinalUserImage] = useState<string | null>(uploadedUserImageUrl || userPreview || null);
   const [loading, setLoading] = useState(true);
   const [statusText, setStatusText] = useState("AI 엔진 연결 중...");
   const [rating, setRating] = useState(0);
   const [showRec, setShowRec] = useState(false);
+
+  const [recommendedItems, setRecommendedItems] = useState<RecommendItem[]>([]);
+  const [isRecLoading, setIsRecLoading] = useState(false);
+
   const pollTimerRef = useRef<number | undefined>(undefined);
+
+  const finalUserImage = userPreview || uploadedUserImageUrl || null;
 
   const getStatusLabel = (status: string, type?: ClothCategory): string => {
     const s = status.toLowerCase();
@@ -73,13 +73,7 @@ const ResultPage = () => {
     document.body.removeChild(link);
   };
 
-  const getPublicUrl = (path: string | undefined | null) => {
-    if (!path) return null;
-    if (path.startsWith("http")) return path;
-    const fileName = path.split("/").pop();
-    return `https://apivirtualtryon.p-e.kr/api/v1/display?filename=${fileName}`;
-  };
-
+  // 1. 작업 상태 폴링 로직
   useEffect(() => {
     let active = true;
     const clearPolling = () => {
@@ -103,13 +97,6 @@ const ResultPage = () => {
 
           setStatusText(getStatusLabel(polled.status, clothType));
 
-          if (polled.userImageId) {
-            const serverUrl = getPublicUrl(polled.userImageId);
-            if (serverUrl && finalUserImage !== serverUrl) {
-              setFinalUserImage(serverUrl);
-            }
-          }
-
           if (polled.status.toLowerCase() === "completed") {
             setResultImage(polled.resultImageUrl || null);
             setLoading(false);
@@ -124,11 +111,47 @@ const ResultPage = () => {
 
     runPolling();
     return () => { active = false; clearPolling(); };
-  }, [tryonId, navigate, clothType, finalUserImage]); // 의존성 배열 보완
+  }, [tryonId, navigate, clothType]);
 
-  // ★ 에러 해결: (item: any) 를 (item: RecommendItem) 으로 바꿔 TypeScript 경고 소멸
+  // 2. 별점 입력 시 Spring DB 추천 API 호출
+  useEffect(() => {
+    if (rating === 0) return;
+
+    const fetchRecommendations = async () => {
+      setIsRecLoading(true);
+      try {
+        const recType = rating >= 3 ? "similar" : "different";
+        const cat = clothType || "upper";
+
+        const response = await fetch(`https://apivirtualtryon.p-e.kr/api/v1/garments/recommend?type=${recType}&category=${cat}`);
+
+        if (response.ok) {
+          const data = await response.json();
+          // ★ 수정됨: (item: any) 대신 (item: GarmentApiResponse)를 사용하여 타입 안정성 확보
+          const mappedItems: RecommendItem[] = data.map((item: GarmentApiResponse) => ({
+            id: item.garmentId || item.id || "0",
+            brandName: item.brandKey || "CapStone",
+            category: item.category || "unknown",
+            name: item.name || "추천 의류",
+            fileUrl: item.fileUrl ? `https://apivirtualtryon.p-e.kr${item.fileUrl}` : "https://via.placeholder.com/300x400?text=No+Image"
+          }));
+          setRecommendedItems(mappedItems);
+        } else {
+          console.warn("추천 데이터를 가져오지 못했습니다.");
+          setRecommendedItems([]);
+        }
+      } catch (error) {
+        console.error("추천 데이터 로드 에러:", error);
+      } finally {
+        setIsRecLoading(false);
+      }
+    };
+
+    fetchRecommendations();
+  }, [rating, clothType]);
+
   const handleRecommendClick = (item: RecommendItem) => {
-    alert(`${item.brand}의 [${item.name}] 상품으로 이동합니다!`);
+    alert(`${item.brandName}의 [${item.name}] 상품으로 이동합니다!`);
   };
 
   return (
@@ -190,12 +213,11 @@ const ResultPage = () => {
           </div>
         </div>
 
-        {/* 별점 평가 및 맞춤 추천 섹션 */}
+        {/* 별점 평가 및 DB 맞춤 추천 섹션 */}
         {!loading && resultImage && (
             <div className="max-w-[1600px] mx-auto px-10 animate-in fade-in slide-in-from-bottom-10 duration-1000">
               <div className="bg-[#111111] p-16 md:p-20 rounded-[3rem] text-white relative overflow-hidden shadow-2xl">
 
-                {/* 별점 입력 영역 */}
                 <div className="text-center mb-16">
                   <h2 className="text-3xl md:text-4xl font-[1000] mb-8 tracking-tighter uppercase">결과가 마음에 드시나요?</h2>
                   <div className="flex justify-center gap-4 md:gap-6">
@@ -207,7 +229,6 @@ const ResultPage = () => {
                   </div>
                 </div>
 
-                {/* 동적 추천 렌더링 영역 */}
                 {showRec && (
                     <div className="border-t border-gray-800 pt-16 animate-in slide-in-from-bottom-8 duration-700">
                       <div className="flex justify-between items-end mb-8">
@@ -215,8 +236,8 @@ const ResultPage = () => {
                           <p className="text-[#2563EB] font-black uppercase tracking-widest text-xs mb-2">Personalized Pick</p>
                           <h3 className="text-2xl font-black">
                             {rating >= 3
-                                ? "마음에 드셨군요! 이런 비슷한 스타일은 어떠세요?"
-                                : "아쉬우셨군요. 새로운 스타일로 기분 전환을 제안해요!"}
+                                ? "마음에 드셨군요! DB에서 찾은 비슷한 스타일을 추천해드려요."
+                                : "아쉬우셨군요. DB에서 완전히 새로운 스타일을 찾아봤어요!"}
                           </h3>
                         </div>
                         <button className="text-xs font-bold text-gray-400 hover:text-white flex items-center gap-1 transition-colors">
@@ -224,24 +245,34 @@ const ResultPage = () => {
                         </button>
                       </div>
 
-                      {/* 추천 아이템 그리드 */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {(rating >= 3 ? mockSimilarItems : mockDifferentItems).map((item) => (
-                            <div
-                                key={item.id}
-                                onClick={() => handleRecommendClick(item)}
-                                className="bg-white/5 rounded-2xl overflow-hidden cursor-pointer hover:bg-white/10 transition-colors border border-white/10 group"
-                            >
-                              <div className="aspect-[4/5] bg-gray-800 relative overflow-hidden">
-                                <img src={item.img} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                              </div>
-                              <div className="p-5">
-                                <p className="text-[10px] font-black tracking-widest text-gray-400 mb-1">{item.brand}</p>
-                                <p className="text-sm font-bold truncate">{item.name}</p>
-                              </div>
-                            </div>
-                        ))}
-                      </div>
+                      {/* API 로딩 및 데이터 렌더링 */}
+                      {isRecLoading ? (
+                          <div className="flex justify-center items-center py-20">
+                            <Loader2 className="animate-spin text-[#2563EB]" size={40} />
+                          </div>
+                      ) : recommendedItems.length > 0 ? (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            {recommendedItems.map((item) => (
+                                <div
+                                    key={item.id}
+                                    onClick={() => handleRecommendClick(item)}
+                                    className="bg-white/5 rounded-2xl overflow-hidden cursor-pointer hover:bg-white/10 transition-colors border border-white/10 group"
+                                >
+                                  <div className="aspect-[4/5] bg-gray-800 relative overflow-hidden">
+                                    <img src={item.fileUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                                  </div>
+                                  <div className="p-5">
+                                    <p className="text-[10px] font-black tracking-widest text-gray-400 mb-1 uppercase">{item.category} / {item.brandName}</p>
+                                    <p className="text-sm font-bold truncate">{item.name}</p>
+                                  </div>
+                                </div>
+                            ))}
+                          </div>
+                      ) : (
+                          <div className="text-center py-10 text-gray-500 font-bold">
+                            추천할 데이터가 아직 DB에 없습니다. 옷을 더 등록해주세요!
+                          </div>
+                      )}
                     </div>
                 )}
 
