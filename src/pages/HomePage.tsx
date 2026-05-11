@@ -2,6 +2,8 @@ import type { ChangeEvent, RefObject } from "react";
 import Header from "../components/layout/Header";
 import FavoriteButton from "../components/favorite/FavoriteButton";
 import { ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import UploadModal from "../components/uploadModal";
+import React, { useState } from "react";
 
 export interface HomeBanner {
     id: number;
@@ -70,9 +72,21 @@ const HomePage = ({
                       uploading,
                       handleFittingClick,
                   }: HomePageProps) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const handleModalUpload = (data: { name: string; category: string; fileUrl: string }) => {
+        console.log("새 의류 등록 정보:", data);
+    };
+
     return (
         <div className="min-h-screen bg-[#F5F5F3] font-sans text-[#111111]">
             <Header />
+
+            <UploadModal 
+                isOpen={isModalOpen} 
+                onClose={() => setIsModalOpen(false)} 
+                onUpload={handleModalUpload} 
+            />
 
             <div className="relative w-full h-[700px] overflow-hidden bg-black">
                 {banners.map((banner, index) => (
@@ -155,12 +169,11 @@ const HomePage = ({
                     </div>
 
                     <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploading}
-                        className="flex items-center gap-2 bg-[#111111] text-white px-6 py-3 rounded-full font-black text-[11px] tracking-widest hover:bg-[#2563EB] transition-all shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center gap-2 bg-[#111111] text-white px-6 py-3 rounded-full font-black text-[11px] tracking-widest hover:bg-[#2563EB] transition-all shadow-lg"
                     >
                         <Upload size={16} />
-                        {uploading ? "업로드 중..." : "로컬 의상 업로드"}
+                        로컬 의상 업로드
                     </button>
 
                     <input
