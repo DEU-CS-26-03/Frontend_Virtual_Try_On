@@ -1,7 +1,12 @@
+<<<<<<< HEAD
 export const API_ORIGIN =
     import.meta.env.VITE_API_BASE_URL || "https://apivirtualtryon.p-e.kr";
 
 export const API_BASE_URL = `${API_ORIGIN}/api/v1`;
+=======
+// src/api/client.ts
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+>>>>>>> e7d9413e5e0c530f1926536a173a9fb1406713e6
 
 export const API_ROUTES = {
   AUTH_LOGIN: `${API_BASE_URL}/auth/login`,
