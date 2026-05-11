@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronLeft, Loader2, ImagePlus, RefreshCw } from "lucide-react";
+import { ChevronLeft, Loader2, ImagePlus, RefreshCw, Shirt, HelpCircle } from "lucide-react";
 import { createTryonJob, type ClothCategory } from "../api/tryonApi";
 import Header from "../components/layout/Header";
 import UploadBox from "../components/upload/UploadBox"; // 기존 업로드 박스 유지
@@ -76,79 +76,70 @@ const Fitting = () => {
   };
 
   return (
-      <div className="min-h-screen bg-[#F5F5F3] pb-20 font-sans text-[#111111]">
+      <div className="min-h-screen bg-[#F5F5F3] pb-24 font-sans text-[#111111]">
         <Header />
 
         {/* 상단 타이틀 영역 */}
-        <div className="max-w-[1000px] mx-auto px-6 pt-12 pb-8 flex flex-col items-center relative">
-          <button onClick={() => navigate("/")} className="absolute left-6 top-10 group p-4 bg-white rounded-full border border-gray-200 hover:bg-[#111111] transition-all shadow-sm">
+        <div className="max-w-[1400px] mx-auto px-10 pt-16 pb-12 flex items-center relative">
+          <button onClick={() => navigate("/")} className="group p-4 bg-white rounded-full border border-gray-200 hover:bg-[#111111] transition-all shadow-sm mr-6">
             <ChevronLeft size={24} className="group-hover:text-white" />
           </button>
-          <h1 className="text-4xl font-[1000] tracking-tighter mb-2">가상 피팅룸</h1>
-          <p className="text-gray-400 font-bold text-sm tracking-wide">의상이 입혀질 부위를 선택하고 내 사진을 업로드하세요</p>
+          <div>
+            <h1 className="text-5xl font-[1000] tracking-tighter leading-none mb-2">가상 피팅룸</h1>
+            <p className="text-gray-400 font-bold tracking-wide text-xs px-1">내 사진을 업로드하고 의상이 입혀질 부위를 선택하세요.</p>
+          </div>
         </div>
 
-        {/* 중앙 정렬된 메인 컨트롤 영역 */}
-        <div className="flex flex-col items-center w-full max-w-[500px] mx-auto px-6">
+        {/* 2-Column 메인 레이아웃 */}
+        <div className="max-w-[1400px] mx-auto grid lg:grid-cols-2 gap-12 px-10">
 
-          {/* 1. 카테고리 선택 버튼 (사진 바로 위, 좌우 완벽 대칭) */}
-          <div className="w-full grid grid-cols-3 gap-3 mb-6">
-            {[
-              { id: "upper", label: "상의 (Top)" },
-              { id: "lower", label: "하의 (Bottom)" },
-              { id: "overall", label: "전신 (Dress)" }
-            ].map((cat) => (
-                <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id as ClothCategory)}
-                    className={`py-3.5 rounded-2xl text-[11px] font-black tracking-widest transition-all shadow-sm ${
-                        selectedCategory === cat.id
-                            ? "bg-[#2563EB] text-white ring-4 ring-[#2563EB]/20 scale-105"
-                            : "bg-white border border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-                    }`}
-                >
-                  {cat.label}
-                </button>
-            ))}
-          </div>
+          {/* 왼쪽: 사용자 모델 사진 & 오버레이 미리보기 */}
+          <div className="flex flex-col h-full">
+            <div className="flex justify-between items-end mb-5 px-2">
+            <span className="text-[11px] font-[1000] tracking-[0.3em] text-[#2563EB] uppercase flex items-center gap-2">
+              <Shirt size={14}/> Step 01
+            </span>
+              <h2 className="text-xl font-black">내 모델 사진</h2>
+            </div>
 
-          {/* 2. 메인 사진 & 오버레이 캔버스 (중앙 집중형) */}
-          <div className="w-full aspect-[3/4] bg-white rounded-[2rem] border border-gray-200 flex items-center justify-center shadow-xl overflow-hidden relative group">
-            {!userPreviewUrl ? (
-                // 사진이 없을 때: 업로드 유도 박스
-                <div className="opacity-70 group-hover:opacity-100 transition-opacity">
-                  <UploadBox />
-                </div>
-            ) : (
-                // 사진이 있을 때: 내 사진 + 옷 오버레이
-                <>
-                  <img src={userPreviewUrl} className="w-full h-full object-cover" alt="User" />
+            <div className="flex-grow aspect-[3/4] bg-white rounded-3xl border border-gray-200 flex flex-col justify-between shadow-sm overflow-hidden relative group">
+              {!userPreviewUrl ? (
+                  // 사진이 없을 때: 업로드 유도 박스
+                  <div className="flex items-center justify-center h-full w-full opacity-70 group-hover:opacity-100 transition-opacity p-8">
+                    <UploadBox />
+                  </div>
+              ) : (
+                  // 사진이 있을 때: 내 사진 + 스마트 오버레이
+                  <div className="relative w-full h-full">
+                    <img src={userPreviewUrl} className="w-full h-full object-cover" alt="User Model" />
 
-                  {/* 오버레이 효과 (크기를 w-[85%]로 키워 옷이 더 크고 선명하게 보이도록 수정) */}
-                  {cloth && (
-                      <div className="absolute inset-0 flex items-center justify-center p-6 bg-black/10 backdrop-blur-[2px]">
-                        <img
-                            src={cloth}
-                            className={`w-[85%] h-[85%] object-contain drop-shadow-2xl animate-pulse transition-all duration-700
-                      ${selectedCategory === 'upper' ? 'translate-y-[-20%] scale-100' : ''}
-                      ${selectedCategory === 'lower' ? 'translate-y-[20%] scale-100' : ''}
-                      ${selectedCategory === 'overall' ? 'scale-110' : ''}
-                    `}
-                            alt="Cloth Overlay"
-                        />
-                      </div>
-                  )}
-                </>
-            )}
-          </div>
+                    {/* ★ 핵심 개선: 옷 크기 축소 및 부위별 위치 조정 로직 */}
+                    {cloth && (
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden bg-black/10 backdrop-blur-[2px] transition-all duration-700">
+                          <img
+                              src={cloth}
+                              className={`absolute left-1/2 -translate-x-1/2 object-contain drop-shadow-2xl animate-in fade-in zoom-in duration-700
+                        ${selectedCategory === 'upper' ? 'top-[10%] w-[60%] h-[50%]' : ''}
+                        ${selectedCategory === 'lower' ? 'bottom-[5%] w-[65%] h-[55%]' : ''}
+                        ${selectedCategory === 'overall' ? 'top-1/2 -translate-y-1/2 w-[80%] h-[80%]' : ''}
+                      `}
+                              alt="Cloth Overlay Preview"
+                          />
+                          {/* 오버레이 상태 표시 뱃지 */}
+                          <div className="absolute top-6 right-6 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full text-[9px] font-black text-[#2563EB] shadow-sm uppercase tracking-widest">
+                            {selectedCategory} preview
+                          </div>
+                        </div>
+                    )}
+                  </div>
+              )}
+            </div>
 
-          {/* 3. 보조 액션 버튼 (같은 x축에 좌우 대칭 배치) */}
-          <div className="w-full flex gap-4 mt-6">
-            {/* 완벽한 대칭 디자인을 위해 기존 UploadButton 대신 동일한 규격의 label 디자인 적용 */}
-            <div className="flex-1">
-              <label className="w-full h-full flex items-center justify-center gap-2 py-4 bg-white border-2 border-gray-200 rounded-2xl font-black text-[11px] tracking-widest text-gray-500 hover:border-[#111111] hover:text-[#111111] cursor-pointer transition-all shadow-sm">
-                <ImagePlus size={16} />
-                사진 선택하기
+            {/* 사진 업로드/변경 버튼 (좌측 박스 하단) */}
+            <div className="mt-5 h-[60px]">
+              <label className="w-full h-full flex items-center justify-center gap-2 bg-white border-2 border-gray-200 rounded-2xl font-black text-[12px] tracking-widest text-gray-500 hover:border-[#2563EB] hover:text-[#2563EB] cursor-pointer transition-all shadow-sm">
+                <ImagePlus size={18} />
+                {file ? "모델 사진 교체하기" : "모델 사진 업로드"}
                 <input
                     type="file"
                     className="hidden"
@@ -159,31 +150,75 @@ const Fitting = () => {
                 />
               </label>
             </div>
+          </div>
 
-            <div className="flex-1">
-              <button onClick={() => navigate("/")} className="w-full h-full flex items-center justify-center gap-2 py-4 bg-white border-2 border-gray-200 rounded-2xl font-black text-[11px] tracking-widest text-gray-500 hover:border-[#111111] hover:text-[#111111] transition-all shadow-sm">
-                <RefreshCw size={16} />
-                다른 옷 고르기
+          {/* 오른쪽: 선택한 의상 & 카테고리 선택 */}
+          <div className="flex flex-col h-full">
+            <div className="flex justify-between items-end mb-5 px-2">
+              <span className="text-[11px] font-[1000] tracking-[0.3em] text-gray-400 uppercase">Step 02</span>
+              <h2 className="text-xl font-black">선택한 의상 정보</h2>
+            </div>
+
+            <div className="flex-grow aspect-[3/4] bg-white rounded-3xl border border-gray-200 flex flex-col shadow-sm relative overflow-hidden">
+              {/* 상단: 카테고리 선택 탭 */}
+              <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+                <div className="flex items-center gap-2 mb-3 px-1">
+                  <HelpCircle size={14} className="text-gray-400" />
+                  <p className="text-[11px] font-bold text-gray-500 tracking-wide">의상이 입혀질 부위를 정확히 지정해주세요.</p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "upper", label: "상의 (Top)" },
+                    { id: "lower", label: "하의 (Bottom)" },
+                    { id: "overall", label: "전신 (Dress)" }
+                  ].map((cat) => (
+                      <button
+                          key={cat.id}
+                          onClick={() => setSelectedCategory(cat.id as ClothCategory)}
+                          className={`py-3 rounded-xl text-[11px] font-black tracking-widest transition-all ${
+                              selectedCategory === cat.id
+                                  ? "bg-[#2563EB] text-white shadow-md ring-2 ring-[#2563EB]/20"
+                                  : "bg-white border border-gray-200 text-gray-400 hover:bg-gray-100"
+                          }`}
+                      >
+                        {cat.label}
+                      </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 하단: 옷 이미지 */}
+              <div className="flex-grow flex items-center justify-center p-12 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-50 to-white">
+                <img src={cloth} className="w-full h-full object-contain drop-shadow-xl hover:scale-105 transition-transform duration-500" alt="Selected Cloth" />
+              </div>
+            </div>
+
+            {/* 다른 옷 고르기 버튼 (우측 박스 하단) */}
+            <div className="mt-5 h-[60px]">
+              <button onClick={() => navigate("/")} className="w-full h-full flex items-center justify-center gap-2 bg-white border-2 border-gray-200 rounded-2xl font-black text-[12px] tracking-widest text-gray-500 hover:border-[#111111] hover:text-[#111111] transition-all shadow-sm">
+                <RefreshCw size={18} />
+                다른 의상 고르기
               </button>
             </div>
           </div>
 
-          {/* 4. 가상 피팅 시작 버튼 */}
-          <div className="w-full mt-10">
-            <button
-                onClick={handleNext}
-                disabled={!file || isLoading}
-                className={`w-full py-6 rounded-2xl text-[15px] font-[1000] tracking-widest transition-all duration-500 shadow-xl flex justify-center items-center gap-3 ${
-                    !file || isLoading
-                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        : "bg-[#2563EB] text-white hover:bg-[#1D4ED8] hover:scale-[1.02] hover:shadow-2xl active:scale-[0.98]"
-                }`}
-            >
-              {isLoading ? <><Loader2 className="animate-spin" size={24} /> AI 추론 엔진 가동 중...</> : "가상 피팅 시작하기"}
-            </button>
-          </div>
-
         </div>
+
+        {/* 4. 가상 피팅 실행 버튼 (최하단 중앙 집중) */}
+        <div className="max-w-[800px] mx-auto mt-20 px-10">
+          <button
+              onClick={handleNext}
+              disabled={!file || isLoading}
+              className={`w-full py-6 rounded-2xl text-[16px] font-[1000] tracking-widest transition-all duration-500 shadow-xl flex justify-center items-center gap-3 ${
+                  !file || isLoading
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-[#111111] text-white hover:bg-black hover:scale-[1.02] hover:shadow-2xl active:scale-[0.98]"
+              }`}
+          >
+            {isLoading ? <><Loader2 className="animate-spin" size={24} /> AI 합성 엔진 가동 중...</> : "선택한 부위로 가상 피팅 시작하기"}
+          </button>
+        </div>
+
       </div>
   );
 };
