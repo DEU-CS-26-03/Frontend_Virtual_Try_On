@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-// import { fetchClothingList } from "../api/clothingApi"; // 🔥 실제 연동 시 주석 해제
 
 const categories = ["all", "top", "bottom", "outer"];
 
@@ -32,7 +31,7 @@ const ClothingList = () => {
 
   const filtered = category === "all" ? clothingData : clothingData.filter(item => item.category === category);
 
-  const handleSelect = (item: any) => {
+  const handleSelect = (item: { garment_id: string; file_url: string }) => {
     setSelected(item.garment_id);
     // 선택 효과를 위해 약간의 딜레이 후 이동
     setTimeout(() => {
