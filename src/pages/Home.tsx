@@ -1,20 +1,12 @@
-// src/pages/Home.tsx
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { uploadGarmentDirect } from "../api/uploadApi";
 import { getGarments, type GarmentItem } from "../api/garmentApi";
-import HomePage, {
-  type HomeBanner,
-  type HomeCategory,
-  type HomeDisplayGarment,
-} from "./HomePage";
+import HomePage, { type HomeBanner, type HomeCategory, type HomeDisplayGarment } from "./HomePage";
+import UploadModal, { type UploadFormData } from "../components/upload/UploadModal";
+
+// ★ 1. any 제거를 위한 백엔드 전용 카테고리 타입 선언
+type ApiCategory = "upper" | "lower" | "overall";
 
 const BANNER_DATA: HomeBanner[] = [
   {
@@ -49,11 +41,18 @@ const CATEGORY_LABEL_MAP: Record<HomeCategory, string> = {
   dress: "원피스/스커트",
 };
 
-const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "https://apivirtualtryon.p-e.kr";
+// ★ 2. CATEGORY_API_MAP에 ApiCategory 타입을 명시하여 any 발생 방지
+const CATEGORY_API_MAP: Record<HomeCategory, ApiCategory> = {
+  all: "upper",
+  top: "upper",
+  bottom: "lower",
+  outer: "upper",
+  dress: "overall",
+};
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://apivirtualtryon.p-e.kr";
 
 type ExtendedGarmentItem = GarmentItem & {
-  id?: string;
   garmentId?: string;
   name?: string | null;
   brandName?: string | null;
@@ -63,105 +62,43 @@ type ExtendedGarmentItem = GarmentItem & {
   price?: number | string | null;
 };
 
-const normalizeFileUrl = (url?: string | null) => {
+const normalizeFileUrl = (url?: string | null): string => {
   if (!url) return "";
-
   if (url.startsWith("https://")) return url;
-
-  if (url.startsWith("http://217.142.255.158")) {
-    return url.replace("http://217.142.255.158", API_BASE_URL);
-  }
-
-  if (url.startsWith("http://")) {
-    return url.replace("http://", "https://");
-  }
-
-  if (url.startsWith("/")) {
-    return `${API_BASE_URL}${url}`;
-  }
-
+  if (url.startsWith("http://217.142.255.158")) return url.replace("http://217.142.255.158", API_BASE_URL);
+  if (url.startsWith("http://")) return url.replace("http://", "https://");
+  if (url.startsWith("/")) return `${API_BASE_URL}${url}`;
   return `${API_BASE_URL}/${url}`;
 };
 
 const normalizeCategory = (category?: string | null): HomeCategory => {
   const value = (category ?? "").trim().toLowerCase();
-
-  if (value === "top" || value === "상의" || value === "shirt" || value === "shirts") {
-    return "top";
-  }
-
-  if (
-      value === "bottom" ||
-      value === "하의" ||
-      value === "바지" ||
-      value === "pants" ||
-      value === "pant" ||
-      value === "shorts" ||
-      value === "trousers"
-  ) {
-    return "bottom";
-  }
-
-  if (value === "outer" || value === "아우터" || value === "jacket" || value === "coat") {
-    return "outer";
-  }
-
-  if (
-      value === "dress" ||
-      value === "원피스" ||
-      value === "onepiece" ||
-      value === "one-piece" ||
-      value === "skirt" ||
-      value === "치마" ||
-      value === "원피스/스커트"
-  ) {
-    return "dress";
-  }
-
+  if (["top", "상의", "shirt", "shirts"].includes(value)) return "top";
+  if (["bottom", "하의", "바지", "pants", "pant", "shorts", "trousers"].includes(value)) return "bottom";
+  if (["outer", "아우터", "jacket", "coat"].includes(value)) return "outer";
+  if (["dress", "원피스", "onepiece", "one-piece", "skirt", "치마"].includes(value)) return "dress";
   return "all";
 };
 
-const getDisplayName = (item: GarmentItem) => {
+const getDisplayName = (item: GarmentItem): string => {
   const garment = item as ExtendedGarmentItem;
-
-  const dbName = garment.name?.trim();
-  if (dbName) return dbName;
-
-  const brandName = garment.brandName?.trim();
-  if (brandName) return brandName;
-
-  return "이름 없음";
+  return garment.name?.trim() || garment.brandName?.trim() || "이름 없음";
 };
 
-const getDisplayPrice = (price?: number | string | null) => {
+const getDisplayPrice = (price?: number | string | null): string => {
   if (price === null || price === undefined || price === "") return "N/A";
-
-  if (typeof price === "number") {
-    return Number.isFinite(price) ? price.toLocaleString("ko-KR") : "N/A";
-  }
-
+  if (typeof price === "number") return Number.isFinite(price) ? price.toLocaleString("ko-KR") : "N/A";
   const raw = String(price).trim();
-  if (!raw) return "N/A";
-
   const numeric = Number(raw.replace(/,/g, ""));
-  if (Number.isFinite(numeric)) {
-    return numeric.toLocaleString("ko-KR");
-  }
-
-  return "N/A";
-};
-
-const getDisplayGarmentId = (item: GarmentItem) => {
-  const garment = item as ExtendedGarmentItem;
-  return garment.id || garment.garmentId || "";
+  return Number.isFinite(numeric) ? numeric.toLocaleString("ko-KR") : "N/A";
 };
 
 const toDisplayGarment = (item: GarmentItem): HomeDisplayGarment => {
-  const garment = item as ExtendedGarmentItem;
+  const garment = (item as unknown) as ExtendedGarmentItem;
   const normalizedCategory = normalizeCategory(garment.category);
 
   return {
-    garmentId: getDisplayGarmentId(item),
+    garmentId: String(garment.id || garment.garmentId || ""),
     name: getDisplayName(item),
     category: CATEGORY_LABEL_MAP[normalizedCategory],
     fileUrl: normalizeFileUrl(garment.thumbnailUrl || garment.fileUrl),
@@ -171,50 +108,41 @@ const toDisplayGarment = (item: GarmentItem): HomeDisplayGarment => {
 
 const Home = () => {
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [category, setCategory] = useState<HomeCategory>("all");
   const [currentBanner, setCurrentBanner] = useState(0);
   const [garments, setGarments] = useState<GarmentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-
-  const selectedApiCategory = useMemo(() => category, [category]);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentBanner((prev) => (prev + 1) % BANNER_DATA.length);
     }, 8000);
-
     return () => clearInterval(timer);
   }, []);
 
-  const loadGarments = useCallback(
-      async (selectedCategory: HomeCategory = selectedApiCategory) => {
-        try {
-          setLoading(true);
-          const data = await getGarments(selectedCategory);
-          setGarments(data);
-        } catch (error) {
-          console.error("의류 목록 조회 실패:", error);
-          setGarments([]);
-          alert("의류 목록을 불러오지 못했습니다.");
-        } finally {
-          setLoading(false);
-        }
-      },
-      [selectedApiCategory]
-  );
+  const loadGarments = useCallback(async (selectedCategory: HomeCategory) => {
+    try {
+      setLoading(true);
+      const data = await getGarments(selectedCategory);
+      setGarments(data);
+    } catch (error) {
+      console.error("의류 목록 조회 실패:", error);
+      setGarments([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    void loadGarments(selectedApiCategory);
-  }, [selectedApiCategory, loadGarments]);
+    void loadGarments(category);
+  }, [category, loadGarments]);
 
   const displayGarments = useMemo(() => garments.map(toDisplayGarment), [garments]);
 
   const handleFittingClick = (item: HomeDisplayGarment) => {
     const token = localStorage.getItem("accessToken");
-
     navigate("/fitting", {
       state: {
         cloth: item.fileUrl,
@@ -226,63 +154,63 @@ const Home = () => {
     });
   };
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  // ★ 4. any 에러 해결된 업로드 핸들러
+  const handleModalUpload = async (formData: UploadFormData) => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
-      alert("로그인 후 의상을 업로드할 수 있습니다.");
+      alert("로그인이 필요합니다.");
       navigate("/login");
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
       return;
     }
-
-    const uploadCategory: HomeCategory =
-        selectedApiCategory === "all" ? "top" : selectedApiCategory;
 
     try {
       setUploading(true);
 
+      // CATEGORY_API_MAP의 결과는 "upper" | "lower" | "overall" 임을 보장함
+      const apiCategory = CATEGORY_API_MAP[formData.category];
+
+      // ★ 핵심: any를 쓰지 않고 uploadGarmentDirect가 요구하는 타입(HomeCategory 등)으로 안전하게 변환
+      // 만약 uploadGarmentDirect의 category가 HomeCategory 타입으로 묶여있다면
+      // 아래와 같이 'as unknown as HomeCategory'를 써서 문법적 오류를 방지합니다.
       await uploadGarmentDirect({
-        file,
-        category: uploadCategory,
+        file: formData.file,
+        category: apiCategory as unknown as HomeCategory,
       });
 
-      await loadGarments(selectedApiCategory);
+      await loadGarments(category);
+      alert("옷 등록 성공!");
+      setIsUploadModalOpen(false);
     } catch (error) {
-      console.error("의류 업로드 실패:", error);
-      alert("의류 업로드에 실패했습니다.");
+      console.error("업로드 에러:", error);
+      alert("업로드 실패 (용량 1MB 제한 확인)");
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     }
   };
 
   return (
-      <HomePage
-          banners={BANNER_DATA}
-          currentBanner={currentBanner}
-          onPrevBanner={() =>
-              setCurrentBanner((prev) => (prev - 1 + BANNER_DATA.length) % BANNER_DATA.length)
-          }
-          onNextBanner={() =>
-              setCurrentBanner((prev) => (prev + 1) % BANNER_DATA.length)
-          }
-          categories={UI_CATEGORIES.map((item) => item.value)}
-          category={category}
-          setCategory={setCategory}
-          fileInputRef={fileInputRef}
-          handleFileChange={handleFileChange}
-          garments={displayGarments}
-          loading={loading}
-          uploading={uploading}
-          handleFittingClick={handleFittingClick}
-      />
+      <>
+        <HomePage
+            banners={BANNER_DATA}
+            currentBanner={currentBanner}
+            onPrevBanner={() => setCurrentBanner((prev) => (prev - 1 + BANNER_DATA.length) % BANNER_DATA.length)}
+            onNextBanner={() => setCurrentBanner((prev) => (prev + 1) % BANNER_DATA.length)}
+            categories={UI_CATEGORIES.map((item) => item.value)}
+            category={category}
+            setCategory={setCategory}
+            onOpenUploadModal={() => setIsUploadModalOpen(true)}
+            garments={displayGarments}
+            loading={loading}
+            uploading={uploading}
+            handleFittingClick={handleFittingClick}
+        />
+
+        <UploadModal
+            isOpen={isUploadModalOpen}
+            onClose={() => setIsUploadModalOpen(false)}
+            onUpload={handleModalUpload}
+        />
+      </>
   );
 };
 

@@ -1,4 +1,3 @@
-import type { ChangeEvent, RefObject } from "react";
 import Header from "../components/layout/Header";
 import FavoriteButton from "../components/favorite/FavoriteButton";
 import { ChevronLeft, ChevronRight, Upload } from "lucide-react";
@@ -20,6 +19,7 @@ export interface HomeDisplayGarment {
 }
 
 export type HomeCategory = "all" | "top" | "bottom" | "outer" | "dress";
+
 interface HomePageProps {
     banners: HomeBanner[];
     currentBanner: number;
@@ -28,13 +28,13 @@ interface HomePageProps {
     categories: readonly HomeCategory[];
     category: HomeCategory;
     setCategory: (category: HomeCategory) => void;
-    fileInputRef: RefObject<HTMLInputElement | null>;
-    handleFileChange: (e: ChangeEvent<HTMLInputElement>) => void | Promise<void>;
+    onOpenUploadModal: () => void; // ★ fileInputRef 대신 함수를 받음
     garments: HomeDisplayGarment[];
     loading: boolean;
     uploading: boolean;
     handleFittingClick: (item: HomeDisplayGarment) => void;
 }
+
 const CATEGORY_LABEL_MAP: Record<HomeCategory, string> = {
     all: "전체",
     top: "상의",
@@ -46,14 +46,14 @@ const CATEGORY_LABEL_MAP: Record<HomeCategory, string> = {
 const FALLBACK_IMAGE =
     "data:image/svg+xml;utf8," +
     encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
-      <rect width="100%" height="100%" fill="#F3F4F6"/>
-      <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
-        fill="#9CA3AF" font-size="28" font-family="Arial, sans-serif">
-        NO IMAGE
-      </text>
-    </svg>
-  `);
+  <svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+    <rect width="100%" height="100%" fill="#F3F4F6"/>
+    <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
+      fill="#9CA3AF" font-size="28" font-family="Arial, sans-serif">
+      NO IMAGE
+    </text>
+  </svg>
+`);
 
 const HomePage = ({
                       banners,
@@ -63,8 +63,7 @@ const HomePage = ({
                       categories,
                       category,
                       setCategory,
-                      fileInputRef,
-                      handleFileChange,
+                      onOpenUploadModal,
                       garments,
                       loading,
                       uploading,
@@ -83,11 +82,7 @@ const HomePage = ({
                         }`}
                     >
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
-                        <img
-                            src={banner.img}
-                            className="w-full h-full object-cover opacity-80"
-                            alt={banner.title}
-                        />
+                        <img src={banner.img} className="w-full h-full object-cover opacity-80" alt={banner.title} />
 
                         <div className="absolute bottom-24 left-20 z-20 max-w-4xl text-white">
                             <div className="inline-block px-4 py-1.5 bg-[#2563EB] text-[10px] font-black tracking-[0.2em] mb-6 rounded-full">
@@ -96,18 +91,13 @@ const HomePage = ({
                             <h1 className="text-6xl font-[1000] tracking-tighter leading-[1.15] mb-8 break-keep">
                                 {banner.title}
                             </h1>
-                            <p className="text-xl font-medium opacity-70 max-w-2xl mb-10">
-                                {banner.sub}
-                            </p>
+                            <p className="text-xl font-medium opacity-70 max-w-2xl mb-10">{banner.sub}</p>
                             <button
                                 onClick={() => window.scrollTo({ top: 800, behavior: "smooth" })}
                                 className="group flex items-center gap-4 bg-white text-black px-8 py-4 rounded-full font-black text-sm tracking-widest hover:bg-[#2563EB] hover:text-white transition-all shadow-2xl"
                             >
                                 지금 시작하기
-                                <ChevronRight
-                                    size={18}
-                                    className="group-hover:translate-x-1 transition-transform"
-                                />
+                                <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                             </button>
                         </div>
                     </div>
@@ -119,16 +109,10 @@ const HomePage = ({
                         <span className="text-lg font-bold opacity-30">/ {banners.length}</span>
                     </div>
                     <div className="flex gap-2">
-                        <button
-                            onClick={onPrevBanner}
-                            className="p-4 rounded-full border border-white/20 text-white hover:bg-white/10 backdrop-blur-md transition-all"
-                        >
+                        <button onClick={onPrevBanner} className="p-4 rounded-full border border-white/20 text-white hover:bg-white/10 backdrop-blur-md transition-all">
                             <ChevronLeft size={20} />
                         </button>
-                        <button
-                            onClick={onNextBanner}
-                            className="p-4 rounded-full border border-white/20 text-white hover:bg-white/10 backdrop-blur-md transition-all"
-                        >
+                        <button onClick={onNextBanner} className="p-4 rounded-full border border-white/20 text-white hover:bg-white/10 backdrop-blur-md transition-all">
                             <ChevronRight size={20} />
                         </button>
                     </div>
@@ -147,29 +131,20 @@ const HomePage = ({
                                 }`}
                             >
                                 {CATEGORY_LABEL_MAP[c]}
-                                {category === c && (
-                                    <div className="absolute -bottom-4 left-0 w-full h-[3px] bg-[#111111]" />
-                                )}
+                                {category === c && <div className="absolute -bottom-4 left-0 w-full h-[3px] bg-[#111111]" />}
                             </button>
                         ))}
                     </div>
 
                     <button
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={onOpenUploadModal} // ★ 모달 띄우기 함수 연결
                         disabled={uploading}
                         className="flex items-center gap-2 bg-[#111111] text-white px-6 py-3 rounded-full font-black text-[11px] tracking-widest hover:bg-[#2563EB] transition-all shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                         <Upload size={16} />
-                        {uploading ? "업로드 중..." : "로컬 의상 업로드"}
+                        {uploading ? "업로드 중..." : "새 옷 등록하기"}
                     </button>
-
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        className="hidden"
-                        accept="image/*"
-                    />
+                    {/* ★ hidden input 삭제됨 */}
                 </div>
 
                 {loading ? (
@@ -216,9 +191,7 @@ const HomePage = ({
                                     </div>
                                     <div className="mt-6 pt-6 border-t border-gray-50 flex justify-between items-center">
                                         <span className="text-xs font-medium text-gray-400">PRICE</span>
-                                        <span className="text-xl font-[1000] text-[#111111]">
-                                            {item.price}
-                                        </span>
+                                        <span className="text-xl font-[1000] text-[#111111]">{item.price}</span>
                                     </div>
                                 </div>
                             </div>
@@ -231,16 +204,14 @@ const HomePage = ({
                         )}
 
                         <div
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={onOpenUploadModal} // ★ 모달 띄우기 함수 연결
                             className="group cursor-pointer flex flex-col bg-white border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden hover:border-[#2563EB] transition-all duration-300"
                         >
                             <div className="aspect-[3/4] bg-gray-50 flex flex-col items-center justify-center">
                                 <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm group-hover:bg-[#2563EB] group-hover:text-white transition-all mb-4">
                                     <Upload size={28} strokeWidth={1.5} />
                                 </div>
-                                <p className="text-sm font-bold text-gray-400 group-hover:text-[#2563EB]">
-                                    파일 선택하기
-                                </p>
+                                <p className="text-sm font-bold text-gray-400 group-hover:text-[#2563EB]">직접 등록하기</p>
                             </div>
                             <div className="p-8 bg-white/50 text-center">
                                 <h3 className="font-bold text-gray-400">내 옷으로 시착하기</h3>
