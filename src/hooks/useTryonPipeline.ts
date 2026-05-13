@@ -1,6 +1,6 @@
 // src/hooks/useTryonPipeline.ts
 import { useState, useRef, useCallback } from "react";
-import { createTryon, getTryon, type TryonJob } from "../api/tryonApi";
+import { createTryon, getTryon, type TryonJob, type ClothCategory } from "../api/tryonApi";
 
 interface PipelineState {
     status: "idle" | "submitting" | "polling" | "done" | "error";
@@ -79,7 +79,8 @@ export function useTryonPipeline() {
             setState({ status: "submitting", job: null, resultImageUrl: null, errorMessage: null });
 
             try {
-                const job = await createTryon({ userImageId, garmentId });
+                // ★ 수정됨: run 함수에서 받은 파라미터(personImage, clothImage, clothType)를 그대로 API로 전달합니다.
+                const job = await createTryon({ personImage, clothImage, clothType });
                 setState({ status: "polling", job, resultImageUrl: null, errorMessage: null });
                 poll(job.tryonId);
             } catch (e) {
