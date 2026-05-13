@@ -1,32 +1,25 @@
-// src/api/client.ts
-export const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+export const API_ORIGIN =
+    import.meta.env.VITE_API_BASE_URL || "https://apivirtualtryon.p-e.kr";
+
+export const API_BASE_URL = `${API_ORIGIN}/api/v1`;
 
 export const API_ROUTES = {
-  LOGIN: `${API_BASE_URL}/api/v1/auth/login`,
-  ME: `${API_BASE_URL}/api/v1/users/me`,
-  FAVORITES: `${API_BASE_URL}/api/v1/favorites`,
-  TRYONS: `${API_BASE_URL}/api/v1/tryons`,
-  IMAGES_PRESIGN: `${API_BASE_URL}/api/v1/images/presign`,
-  USER_IMAGES: `${API_BASE_URL}/api/v1/user-images`,
-  GARMENTS: `${API_BASE_URL}/api/v1/garments`,
-  UPLOADS: `${API_BASE_URL}/api/v1/uploads`,
+  AUTH_LOGIN: `${API_BASE_URL}/auth/login`,
+  AUTH_REGISTER: `${API_BASE_URL}/auth/register`,
+  AUTH_ME: `${API_BASE_URL}/users/me`,
+  USER_IMAGES: `${API_BASE_URL}/user-images`,
+  GARMENTS: `${API_BASE_URL}/garments`,
+  FAVORITES: `${API_BASE_URL}/favorites`,
+  TRYONS: `${API_BASE_URL}/tryons`,
+  RESULTS: `${API_BASE_URL}/results`,
+  HEALTH: `${API_BASE_URL}/model-health`,
+  IMAGES_PRESIGN: `${API_BASE_URL}/images/presign`,
+  UPLOADS: `${API_BASE_URL}/uploads`,
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function getErrorMessage(data: unknown): string {
-  if (isRecord(data) && typeof data.message === "string") {
-    return data.message;
-  }
-  return "API 요청 실패";
-}
 
 export class ApiError extends Error {
   status: number;
-  data: unknown;
+  data?: unknown;
 
   constructor(message: string, status: number, data?: unknown) {
     super(message);
@@ -36,39 +29,71 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(
-    url: string,
-    options: RequestInit = {}
-): Promise<T> {
-  const token = localStorage.getItem("accessToken");
+type ApiRequestOptions = RequestInit & {
+  isFormData?: boolean;
+  withAuth?: boolean;
+  token?: string | null;
+};
 
-  const headers = new Headers(options.headers || {});
-  if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
-    headers.set("Content-Type", "application/json");
+function getAccessToken(): string | null {
+  try {
+    return localStorage.getItem("accessToken");
+  } catch {
+    return null;
   }
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+}
+
+async function parseResponse(res: Response) {
+  const contentType = res.headers.get("content-type") ?? "";
+
+  if (res.status === 204) return null;
+  if (contentType.includes("application/json")) return res.json();
+  return res.text();
+}
+
+export async function apiRequest<T = unknown>(
+    url: string,
+    options: ApiRequestOptions = {}
+): Promise<T> {
+  const {
+    isFormData = false,
+    withAuth = false,
+    token,
+    headers,
+    ...restOptions
+  } = options;
+
+  const finalHeaders = new Headers(headers);
+  const accessToken = token ?? (withAuth ? getAccessToken() : null);
+
+  if (withAuth && !accessToken) {
+    throw new ApiError("로그인이 필요합니다.", 401);
+  }
+
+  if (accessToken) {
+    finalHeaders.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  if (!isFormData && !finalHeaders.has("Content-Type")) {
+    finalHeaders.set("Content-Type", "application/json");
   }
 
   const response = await fetch(url, {
-    ...options,
-    headers,
+    ...restOptions,
+    headers: finalHeaders,
   });
 
-  let data: unknown;
-  const text = await response.text();
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
+  const data = await parseResponse(response);
 
   if (!response.ok) {
-    if (response.status === 401) {
-      localStorage.removeItem("accessToken");
-    }
-    throw new ApiError(getErrorMessage(data), response.status, data);
+    const message =
+        typeof data === "object" && data !== null && "message" in data
+            ? String((data as { message?: unknown }).message ?? `HTTP ${response.status}`)
+            : typeof data === "string" && data
+                ? data
+                : `HTTP ${response.status}`;
+
+    throw new ApiError(message, response.status, data);
   }
 
   return data as T;

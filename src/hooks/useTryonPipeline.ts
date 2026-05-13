@@ -73,7 +73,7 @@ export function useTryonPipeline() {
     }, [stopPolling]);
 
     const run = useCallback(
-        async (userImageId: string, garmentId: string) => {
+        async (personImage: File, clothImage: File, clothType: ClothCategory = "upper") => {
             stopPolling();
             pollCount.current = 0;
             setState({ status: "submitting", job: null, resultImageUrl: null, errorMessage: null });

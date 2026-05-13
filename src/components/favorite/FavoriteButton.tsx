@@ -14,6 +14,12 @@ const FavoriteButton = ({ garmentId }: Props) => {
     useEffect(() => {
         let mounted = true;
 
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            setLiked(false);
+            return;
+        }
+
         const loadFavorites = async () => {
             try {
                 const favorites = await getFavorites();
@@ -24,7 +30,7 @@ const FavoriteButton = ({ garmentId }: Props) => {
             }
         };
 
-        loadFavorites();
+        void loadFavorites();
 
         return () => {
             mounted = false;
@@ -33,6 +39,12 @@ const FavoriteButton = ({ garmentId }: Props) => {
 
     const handleToggle = async (e: React.MouseEvent) => {
         e.stopPropagation();
+
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            alert("로그인 후 이용 가능합니다.");
+            return;
+        }
 
         try {
             setLoading(true);
@@ -45,6 +57,16 @@ const FavoriteButton = ({ garmentId }: Props) => {
                 setLiked(true);
             }
         } catch (error) {
+            const status =
+                typeof error === "object" && error && "status" in error
+                    ? Number((error as { status?: number }).status)
+                    : undefined;
+
+            if (status === 401) {
+                alert("로그인 후 이용 가능합니다.");
+                return;
+            }
+
             console.error("favorite toggle error:", error);
             alert("즐겨찾기 처리에 실패했습니다.");
         } finally {
@@ -59,10 +81,7 @@ const FavoriteButton = ({ garmentId }: Props) => {
             className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow hover:scale-105 transition"
             title={liked ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
-            <Heart
-                size={20}
-                className={liked ? "fill-red-500 text-red-500" : "text-gray-500"}
-            />
+            <Heart size={20} className={liked ? "fill-red-500 text-red-500" : "text-gray-500"} />
         </button>
     );
 };

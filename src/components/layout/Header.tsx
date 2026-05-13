@@ -1,51 +1,81 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Globe, Menu, LogOut } from "lucide-react";
-import { getMyInfo, type MyInfo } from "../../api/auth";
-import { ApiError } from "../../api/client";
+
+type HeaderUserInfo = {
+  id?: number;
+  email?: string;
+  nickname?: string;
+  role?: string;
+};
+
+const parseJwtUser = (token: string): HeaderUserInfo | null => {
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) {
+      return null;
+    }
+
+    const normalizedPayload = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const decodedPayload = JSON.parse(atob(normalizedPayload)) as Record<string, unknown>;
+
+    return {
+      id:
+          typeof decodedPayload.userId === "number"
+              ? decodedPayload.userId
+              : typeof decodedPayload.id === "number"
+                  ? decodedPayload.id
+                  : undefined,
+      email:
+          typeof decodedPayload.email === "string"
+              ? decodedPayload.email
+              : undefined,
+      nickname:
+          typeof decodedPayload.nickname === "string"
+              ? decodedPayload.nickname
+              : typeof decodedPayload.name === "string"
+                  ? decodedPayload.name
+                  : undefined,
+      role:
+          typeof decodedPayload.role === "string"
+              ? decodedPayload.role
+              : undefined,
+    };
+  } catch {
+    return null;
+  }
+};
 
 const Header = () => {
   const navigate = useNavigate();
-  const token = localStorage.getItem("accessToken");
+
+  const token = (() => {
+    try {
+      return sessionStorage.getItem("accessToken");
+    } catch {
+      return null;
+    }
+  })();
+
   const isLoggedIn = !!token;
-
-  const [userInfo, setUserInfo] = useState<MyInfo | null>(null);
-
-  useEffect(() => {
-    if (!isLoggedIn) return;
-
-    getMyInfo()
-        .then((data: MyInfo) => {
-          setUserInfo(data);
-        })
-        .catch((error: unknown) => {
-          console.error("인증 실패:", error);
-
-          if (error instanceof ApiError && error.status === 401) {
-            alert("세션이 만료되었습니다. 다시 로그인해주세요.");
-            localStorage.removeItem("accessToken");
-            navigate("/login");
-            return;
-          }
-
-          alert("사용자 정보를 불러오지 못했습니다.");
-        });
-  }, [isLoggedIn, navigate]);
+  const userInfo = token ? parseJwtUser(token) : null;
 
   const handleUserClick = () => {
     if (!isLoggedIn) {
       navigate("/login");
-    } else {
-      navigate("/history");
+      return;
     }
+
+    navigate("/history");
   };
 
   const handleLogout = () => {
-    if (window.confirm("로그아웃 하시겠습니까?")) {
-      localStorage.removeItem("accessToken");
-      setUserInfo(null);
-      navigate("/");
+    if (!window.confirm("로그아웃 하시겠습니까?")) {
+      return;
     }
+
+    localStorage.removeItem("accessToken");
+    navigate("/");
+    window.location.reload();
   };
 
   return (
@@ -69,8 +99,14 @@ const Header = () => {
                     key={menu}
                     onClick={(e) => {
                       e.preventDefault();
-                      if (menu === "VIRTUAL FITTING") navigate("/fitting");
-                      if (menu === "MY HISTORY") handleUserClick();
+
+                      if (menu === "VIRTUAL FITTING") {
+                        navigate("/fitting");
+                      }
+
+                      if (menu === "MY HISTORY") {
+                        handleUserClick();
+                      }
                     }}
                     className={`text-[12px] font-black tracking-[0.2em] transition-colors ${
                         menu === "MY HISTORY" && isLoggedIn
@@ -84,9 +120,9 @@ const Header = () => {
           </nav>
 
           <div className="flex items-center gap-7 text-[#111111]">
-            {isLoggedIn && userInfo && (
+            {isLoggedIn && userInfo?.nickname && (
                 <span className="text-[10px] font-bold text-[#111111] bg-white px-3 py-1 rounded-full border border-gray-200">
-              {userInfo.name}님
+              {userInfo.nickname}님
             </span>
             )}
 
