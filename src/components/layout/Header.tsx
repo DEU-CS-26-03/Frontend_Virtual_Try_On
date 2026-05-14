@@ -93,7 +93,7 @@ const Header = () => {
           </span>
           </div>
 
-          <nav className="hidden md:flex items-center gap-9">
+          <nav className="hidden md:flex items-center gap-7">
             {["SHOP", "VIRTUAL FITTING", "COLLECTION", "MY HISTORY"].map((menu) => (
                 <button
                     key={menu}
@@ -108,7 +108,7 @@ const Header = () => {
                         handleUserClick();
                       }
                     }}
-                    className={`text-[25px] font-black tracking-[0.2em] transition-colors ${
+                    className={`text-[15px] font-black tracking-[0.2em] transition-colors ${
                         menu === "MY HISTORY" && isLoggedIn
                             ? "text-[#2563EB]"
                             : "text-gray-400 hover:text-[#111111]"
