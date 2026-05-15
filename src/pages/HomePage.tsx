@@ -1,6 +1,6 @@
 import Header from "../components/layout/Header";
 import FavoriteButton from "../components/favorite/FavoriteButton";
-import { ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, Trash2 } from "lucide-react"; // 중복 import 합침
 
 export interface HomeBanner {
     id: number;
@@ -33,6 +33,8 @@ interface HomePageProps {
     loading: boolean;
     uploading: boolean;
     handleFittingClick: (item: HomeDisplayGarment) => void;
+    isAdmin: boolean;
+    onDelete: (id: string) => void;
 }
 
 const CATEGORY_LABEL_MAP: Record<HomeCategory, string> = {
@@ -68,6 +70,8 @@ const HomePage = ({
                       loading,
                       uploading,
                       handleFittingClick,
+                      isAdmin,
+                      onDelete,
                   }: HomePageProps) => {
     return (
         <div className="min-h-screen bg-[#F5F5F3] font-sans text-[#111111]">
@@ -185,13 +189,34 @@ const HomePage = ({
                                         <p className="text-[10px] font-black text-[#2563EB] tracking-widest uppercase mb-2">
                                             {item.category}
                                         </p>
-                                        <h3 className="font-bold text-lg text-[#111111] leading-tight line-clamp-1 group-hover:text-[#2563EB] transition-colors">
-                                            {item.name}
-                                        </h3>
+
+                                        {/* ★ 수정된 영역: 이름과 삭제 버튼을 가로로 배치 */}
+                                        <div className="flex justify-between items-start gap-4">
+                                            <h3 className="font-bold text-lg text-[#111111] leading-tight line-clamp-2 group-hover:text-[#2563EB] transition-colors flex-1">
+                                                {item.name}
+                                            </h3>
+
+                                            {/* ★ 관리자일 때만 휴지통 버튼 렌더링 */}
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // 카드 전체 클릭(피팅 이동) 이벤트 전파 방지
+                                                        onDelete(item.garmentId);
+                                                    }}
+                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                    title="의류 삭제"
+                                                >
+                                                    <Trash2 size={18} strokeWidth={2.5} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
+
                                     <div className="mt-6 pt-6 border-t border-gray-50 flex justify-between items-center">
                                         <span className="text-xs font-medium text-gray-400">PRICE</span>
-                                        <span className="text-xl font-[1000] text-[#111111]">{item.price}</span>
+                                        <span className="text-xl font-[1000] text-[#111111]">
+                                        {item.price}
+                                    </span>
                                     </div>
                                 </div>
                             </div>
