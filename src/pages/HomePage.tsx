@@ -6,8 +6,11 @@ export interface HomeBanner {
     id: number;
     title: string;
     sub: string;
-    img: string;
     tag: string;
+    beforeImg?: string;  // 왼쪽 상단 (모델 사진)
+    garmentImg?: string; // left 하단 (의상 사진)
+    resultImg?: string;  // 오른쪽 전체 (피팅 결과)
+    img?: string;
 }
 
 export interface HomeDisplayGarment {
@@ -74,55 +77,128 @@ const HomePage = ({
                       onDelete,
                   }: HomePageProps) => {
     return (
-        <div className="min-h-screen bg-[#F5F5F3] font-sans text-[#111111]">
+        <div className="min-h-screen bg-gray-50">
+            {/* ── 🔓 헤더 영역 복구 (로고 및 로그인/로그아웃 섹션) ── */}
             <Header />
 
-            <div className="relative w-full h-[700px] overflow-hidden bg-black">
-                {banners.map((banner, index) => (
-                    <div
-                        key={banner.id}
-                        className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-                            index === currentBanner ? "opacity-100" : "opacity-0"
-                        }`}
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
-                        <img src={banner.img} className="w-full h-full object-cover opacity-80" alt={banner.title} />
+            {/* ── 꽉 차는 마스터 슬라이더 섹션 ── */}
+            <div className="relative w-full h-[550px] bg-[#0d1117] overflow-hidden shadow-2xl">
+                {banners.map((banner, index) => {
+                    const isActive = index === currentBanner;
+                    
+                    return (
+                        <div
+                            key={banner.id}
+                            className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                                isActive 
+                                    ? "opacity-100 z-10 pointer-events-auto block" 
+                                    : "opacity-0 z-0 pointer-events-none invisible"
+                            }`}
+                        >
+                            {banner.id === 1 ? (
+                                /* 💡 1페이지: 고화질 매장 전경이 화면에 꽉 차는 풀스크린 레이아웃 */
+                                <div className="relative w-full h-full">
+                                    <img
+                                        src={banner.img || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600&auto=format&fit=crop"}
+                                        alt={banner.title}
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-10" />
+                                    
+                                    <div className="max-w-[1600px] mx-auto w-full h-full flex items-center px-10 md:px-16 relative z-20">
+                                        <div className="w-full lg:w-[50%] space-y-6">
+                                            <span className="inline-block bg-teal-400 text-black px-4 py-1.5 text-xs font-black rounded-full tracking-widest uppercase shadow-md">
+                                                {banner.tag}
+                                            </span>
+                                            <h1 className="text-3xl md:text-[46px] font-[1000] leading-[1.3] tracking-tight text-white whitespace-pre-line drop-shadow-xl">
+                                                {banner.title}
+                                            </h1>
+                                            <p className="text-gray-200 text-sm md:text-base leading-relaxed max-w-md font-medium drop-shadow">
+                                                {banner.sub}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* 💡 2, 3페이지: 가상 피팅 전용 좌우 레이아웃 (3분할 구조 포함) */
+                                <div className="max-w-[1600px] mx-auto w-full h-full flex flex-col lg:flex-row items-center justify-between px-10 md:px-16 py-6 text-white gap-12 relative z-20">
+                                    <div className="w-full lg:w-[42%] space-y-6">
+                                        <span className="inline-block bg-teal-400/10 text-teal-400 border border-teal-400/20 px-4 py-1.5 text-xs font-black rounded-full tracking-widest uppercase">
+                                            {banner.tag}
+                                        </span>
+                                        <h1 className="text-3xl md:text-[44px] font-[1000] leading-[1.3] tracking-tight text-white whitespace-pre-line drop-shadow-lg">
+                                            {banner.title}
+                                        </h1>
+                                        <p className="text-gray-400 text-sm md:text-base leading-relaxed max-w-md font-medium">
+                                            {banner.sub}
+                                        </p>
+                                    </div>
 
-                        <div className="absolute bottom-24 left-20 z-20 max-w-4xl text-white">
-                            <div className="inline-block px-4 py-1.5 bg-[#2563EB] text-[10px] font-black tracking-[0.2em] mb-6 rounded-full">
-                                {banner.tag}
-                            </div>
-                            <h1 className="text-6xl font-[1000] tracking-tighter leading-[1.15] mb-8 break-keep">
-                                {banner.title}
-                            </h1>
-                            <p className="text-xl font-medium opacity-70 max-w-2xl mb-10">{banner.sub}</p>
-                            <button
-                                onClick={() => window.scrollTo({ top: 800, behavior: "smooth" })}
-                                className="group flex items-center gap-4 bg-white text-black px-8 py-4 rounded-full font-black text-sm tracking-widest hover:bg-[#2563EB] hover:text-white transition-all shadow-2xl"
-                            >
-                                지금 시작하기
-                                <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                            </button>
+                                    <div className="w-full lg:w-[53%] h-[420px] flex justify-end items-center">
+                                        <div className="flex items-center gap-6 w-full max-w-[720px] h-full justify-end">
+                                            <div className="flex flex-col gap-4 w-[190px] h-full justify-center">
+                                                <div className="h-[190px] bg-gray-800 rounded-2xl overflow-hidden border border-white/10 relative shadow-xl">
+                                                    <img src={banner.beforeImg} alt="Model" className="w-full h-full object-cover object-top" />
+                                                    <span className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-md px-2.5 py-1 text-[10px] text-gray-300 rounded-lg font-bold">MODEL</span>
+                                                </div>
+                                                <div className="h-[190px] bg-white rounded-2xl overflow-hidden border border-white/10 relative shadow-xl flex items-center justify-center p-4">
+                                                    <img src={banner.garmentImg} alt="Garment" className="max-w-full max-h-full object-contain" />
+                                                    <span className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-md px-2.5 py-1 text-[10px] text-black rounded-lg font-bold">ITEM</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="text-3xl font-light text-gray-600 px-1">+</div>
+
+                                            <div className="w-[280px] h-[400px] bg-gray-800 rounded-3xl overflow-hidden border-2 border-teal-400 relative shadow-2xl shadow-teal-500/20">
+                                                <img src={banner.resultImg} alt="Result" className="w-full h-full object-cover object-top" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                                                <span className="absolute bottom-4 left-4 bg-teal-400 text-black px-3 py-1.5 text-xs font-black rounded-xl shadow-lg">
+                                                    TRY-ON RESULT
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
 
-                <div className="absolute bottom-24 right-20 flex items-center gap-6 z-30">
-                    <div className="flex items-baseline gap-1 text-white">
-                        <span className="text-3xl font-[1000]">{currentBanner + 1}</span>
-                        <span className="text-lg font-bold opacity-30">/ {banners.length}</span>
+                {/* 🧭 슬라이더 클릭 컨트롤러 (z-index 격상으로 무조건 뚫고 클릭되게 세팅) */}
+                <div className="absolute bottom-10 right-16 flex items-center gap-6 z-[60] bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 pointer-events-auto">
+                    <div className="flex items-baseline gap-1 text-white select-none">
+                        <span className="text-2xl font-black text-teal-400">{currentBanner + 1}</span>
+                        <span className="text-sm font-bold opacity-40">/ {banners.length}</span>
                     </div>
-                    <div className="flex gap-2">
-                        <button onClick={onPrevBanner} className="p-4 rounded-full border border-white/20 text-white hover:bg-white/10 backdrop-blur-md transition-all">
-                            <ChevronLeft size={20} />
+                    <div className="w-[1px] h-4 bg-white/20" />
+                    <div className="flex gap-3">
+                        <button 
+                            type="button"
+                            onClick={(e) => { 
+                                e.preventDefault(); 
+                                e.stopPropagation(); 
+                                onPrevBanner(); 
+                            }} 
+                            className="p-2.5 rounded-full border border-white/20 text-white hover:bg-teal-400 hover:text-black hover:border-teal-400 transition-all active:scale-95 cursor-pointer relative z-[70]"
+                        >
+                            <ChevronLeft size={18} strokeWidth={2.5} />
                         </button>
-                        <button onClick={onNextBanner} className="p-4 rounded-full border border-white/20 text-white hover:bg-white/10 backdrop-blur-md transition-all">
-                            <ChevronRight size={20} />
+                        <button 
+                            type="button"
+                            onClick={(e) => { 
+                                e.preventDefault(); 
+                                e.stopPropagation(); 
+                                onNextBanner(); 
+                            }} 
+                            className="p-2.5 rounded-full border border-white/20 text-white hover:bg-teal-400 hover:text-black hover:border-teal-400 transition-all active:scale-95 cursor-pointer relative z-[70]"
+                        >
+                            <ChevronRight size={18} strokeWidth={2.5} />
                         </button>
                     </div>
                 </div>
             </div>
 
+            {/* ── 하단 상품 목록 영역 ── */}
             <div className="max-w-[1600px] mx-auto px-10 mt-20">
                 <div className="flex justify-between items-center mb-16 border-b border-gray-200 py-4">
                     <div className="flex gap-10">
@@ -131,7 +207,7 @@ const HomePage = ({
                                 key={c}
                                 onClick={() => setCategory(c)}
                                 className={`text-sm font-black tracking-tight transition-all relative ${
-                                    category === c ? "text-[#111111]" : "text-gray-300"
+                                    category === c ? "text-[#111111]" : "text-gray-300 hover:text-gray-500"
                                 }`}
                             >
                                 {CATEGORY_LABEL_MAP[c]}
@@ -141,18 +217,17 @@ const HomePage = ({
                     </div>
 
                     <button
-                        onClick={onOpenUploadModal} // ★ 모달 띄우기 함수 연결
+                        onClick={onOpenUploadModal}
                         disabled={uploading}
                         className="flex items-center gap-2 bg-[#111111] text-white px-6 py-3 rounded-full font-black text-[11px] tracking-widest hover:bg-[#2563EB] transition-all shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                         <Upload size={16} />
                         {uploading ? "업로드 중..." : "새 옷 등록하기"}
                     </button>
-                    {/* ★ hidden input 삭제됨 */}
                 </div>
 
                 {loading ? (
-                    <div className="pb-32 text-center py-20 font-bold text-gray-400">의류 목록을 불러오는 중입니다.</div>
+                    <div className="pb-32 text-center py-20 font-bold text-gray-400 animate-pulse">의류 목록을 불러오는 중입니다.</div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12 pb-32">
                         {garments.map((item) => (
@@ -183,25 +258,21 @@ const HomePage = ({
                                 <div className="p-8 flex flex-col justify-between flex-grow">
                                     <div className="flex justify-between items-start">
                                         <div className="flex-1">
-                                            {/* 타입(카테고리) 위치 */}
                                             <p className="text-[10px] font-black text-[#2563EB] tracking-widest uppercase mb-2">
                                                 {item.category}
                                             </p>
-                                            {/* 이름 위치 */}
                                             <h3 className="font-bold text-lg text-[#111111] leading-tight line-clamp-1 group-hover:text-[#2563EB] transition-colors">
                                                 {item.name}
                                             </h3>
                                         </div>
 
-                                        {/* ★ 관리자 삭제 버튼: 빨간색(#EF4444)으로 수정하여 즉시 보이게 함 */}
                                         {isAdmin && (
                                             <button
                                                 onClick={(e) => {
-                                                    e.stopPropagation(); // 카드 클릭 방지
+                                                    e.stopPropagation();
                                                     onDelete(item.garmentId);
                                                 }}
                                                 className="ml-4 p-2 text-red-500 hover:bg-red-50 rounded-full transition-all flex-shrink-0"
-                                                title="의류 삭제"
                                             >
                                                 <Trash2 size={20} strokeWidth={2.5} />
                                             </button>
@@ -215,26 +286,6 @@ const HomePage = ({
                                 </div>
                             </div>
                         ))}
-                        {garments.length === 0 && (
-                            <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4 min-h-[220px] rounded-2xl border-2 border-dashed border-gray-200 bg-white flex items-center justify-center text-gray-400 font-bold">
-                                등록된 의류가 없습니다.
-                            </div>
-                        )}
-
-                        <div
-                            onClick={onOpenUploadModal} // ★ 모달 띄우기 함수 연결
-                            className="group cursor-pointer flex flex-col bg-white border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden hover:border-[#2563EB] transition-all duration-300"
-                        >
-                            <div className="aspect-[3/4] bg-gray-50 flex flex-col items-center justify-center">
-                                <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm group-hover:bg-[#2563EB] group-hover:text-white transition-all mb-4">
-                                    <Upload size={28} strokeWidth={1.5} />
-                                </div>
-                                <p className="text-sm font-bold text-gray-400 group-hover:text-[#2563EB]">직접 등록하기</p>
-                            </div>
-                            <div className="p-8 bg-white/50 text-center">
-                                <h3 className="font-bold text-gray-400">내 옷으로 시착하기</h3>
-                            </div>
-                        </div>
                     </div>
                 )}
             </div>

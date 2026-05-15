@@ -8,9 +8,34 @@ import HomePage, { type HomeBanner, type HomeCategory } from "./HomePage";
 import UploadModal, { type UploadFormData } from "../components/upload/UploadModal";
 
 const BANNER_DATA: HomeBanner[] = [
-  { id: 1, title: "상상하던 스타일, 실시간 AI 가상 피팅으로 확인하세요", sub: "모델에게 옷을 입히듯 스타일을 즉시 확인하세요.", img: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=1600", tag: "AI VIRTUAL TRY-ON" },
-  { id: 2, title: "클릭 한 번으로 완성되는 나만의 가상 드레스룸", sub: "원하는 옷을 고르고 즉시 피팅 결과를 확인하세요.", img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600", tag: "SMART FITTING" },
+  { 
+    id: 1, 
+    tag: "SMART FITTING ROOM", 
+    title: "클릭 한 번으로 완성되는\n나만의 가상 드레스룸", 
+    sub: "원하는 옷을 고르고 즉시 피팅 결과를 실시간 피드에서 확인하세요.", 
+    // 💡 이전에 맞춰드렸던 세련된 고화질 드레스룸/쇼룸 이미지 URL로 교체합니다.
+    img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600&auto=format&fit=crop" 
+  },
+  { 
+    id: 2, 
+    tag: "AI VIRTUAL TRY-ON",
+    title: "상상하던 스타일,\n실시간 AI 가상 피팅으로 확인하세요", 
+    sub: "모델에게 옷을 입히듯 내 스타일을 즉시 가상 공간에서 확인하세요.", 
+    beforeImg: "/before.PNG",   
+    garmentImg: "/jacket.PNG",  
+    resultImg: "/after.PNG"     
+  },
+  { 
+    id: 3, 
+    tag: "STYLING GENERATOR",
+    title: "새로운 패션 트렌드를\n정교한 생성형 AI로 매칭", 
+    sub: "다양한 옷과 체형 데이터베이스를 기반으로 최상의 아웃핏을 도출합니다.", 
+    beforeImg: "/before.PNG",   
+    garmentImg: "/jacket.PNG",  
+    resultImg: "/after.PNG"     
+  }
 ];
+
 
 const CATEGORY_API_MAP: Record<HomeCategory, "upper" | "lower" | "overall"> = {
   all: "upper", top: "upper", bottom: "lower", outer: "upper", dress: "overall"
