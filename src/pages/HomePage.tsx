@@ -152,11 +152,7 @@ const HomePage = ({
                 </div>
 
                 {loading ? (
-                    <div className="pb-32">
-                        <div className="h-[240px] rounded-2xl border border-gray-100 bg-white flex items-center justify-center text-gray-400 font-bold">
-                            의류 목록을 불러오는 중입니다.
-                        </div>
-                    </div>
+                    <div className="pb-32 text-center py-20 font-bold text-gray-400">의류 목록을 불러오는 중입니다.</div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12 pb-32">
                         {garments.map((item) => (
@@ -185,43 +181,40 @@ const HomePage = ({
                                 </div>
 
                                 <div className="p-8 flex flex-col justify-between flex-grow">
-                                    <div>
-                                        <p className="text-[10px] font-black text-[#2563EB] tracking-widest uppercase mb-2">
-                                            {item.category}
-                                        </p>
-
-                                        {/* ★ 수정된 영역: 이름과 삭제 버튼을 가로로 배치 */}
-                                        <div className="flex justify-between items-start gap-4">
-                                            <h3 className="font-bold text-lg text-[#111111] leading-tight line-clamp-2 group-hover:text-[#2563EB] transition-colors flex-1">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                            {/* 타입(카테고리) 위치 */}
+                                            <p className="text-[10px] font-black text-[#2563EB] tracking-widest uppercase mb-2">
+                                                {item.category}
+                                            </p>
+                                            {/* 이름 위치 */}
+                                            <h3 className="font-bold text-lg text-[#111111] leading-tight line-clamp-1 group-hover:text-[#2563EB] transition-colors">
                                                 {item.name}
                                             </h3>
-
-                                            {/* ★ 관리자일 때만 휴지통 버튼 렌더링 */}
-                                            {isAdmin && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation(); // 카드 전체 클릭(피팅 이동) 이벤트 전파 방지
-                                                        onDelete(item.garmentId);
-                                                    }}
-                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                                    title="의류 삭제"
-                                                >
-                                                    <Trash2 size={18} strokeWidth={2.5} />
-                                                </button>
-                                            )}
                                         </div>
+
+                                        {/* ★ 관리자 삭제 버튼: 빨간색(#EF4444)으로 수정하여 즉시 보이게 함 */}
+                                        {isAdmin && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation(); // 카드 클릭 방지
+                                                    onDelete(item.garmentId);
+                                                }}
+                                                className="ml-4 p-2 text-red-500 hover:bg-red-50 rounded-full transition-all flex-shrink-0"
+                                                title="의류 삭제"
+                                            >
+                                                <Trash2 size={20} strokeWidth={2.5} />
+                                            </button>
+                                        )}
                                     </div>
 
                                     <div className="mt-6 pt-6 border-t border-gray-50 flex justify-between items-center">
                                         <span className="text-xs font-medium text-gray-400">PRICE</span>
-                                        <span className="text-xl font-[1000] text-[#111111]">
-                                        {item.price}
-                                    </span>
+                                        <span className="text-xl font-[1000] text-[#111111]">{item.price}</span>
                                     </div>
                                 </div>
                             </div>
                         ))}
-
                         {garments.length === 0 && (
                             <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4 min-h-[220px] rounded-2xl border-2 border-dashed border-gray-200 bg-white flex items-center justify-center text-gray-400 font-bold">
                                 등록된 의류가 없습니다.
