@@ -1,27 +1,21 @@
 import { API_ROUTES, ApiError } from "./client";
 
 export interface UploadGarmentResult {
-    garment_id?: string;
     garmentId?: string;
-    status?: string;
-    source_type?: string;
-    sourceType?: string;
-    category?: string;
     name?: string;
+    brandName?: string;
+    category?: string;
     price?: number | string | null;
-    content_type?: string;
-    contentType?: string;
-    file_url?: string;
     fileUrl?: string;
-    brand_key?: string;
-    brandKey?: string;
-    created_at?: string;
-    createdAt?: string;
 }
 
+// ★ 파라미터 타입 확장: name, brandName, price 추가
 export async function uploadGarmentDirect(params: {
     file: File;
     category: string;
+    name?: string;
+    brandName?: string;
+    price?: string;
 }): Promise<UploadGarmentResult> {
     const token = localStorage.getItem("accessToken");
 
@@ -33,16 +27,21 @@ export async function uploadGarmentDirect(params: {
     formData.append("file", params.file);
     formData.append("category", params.category);
 
+    // ★ 추가: 텍스트 정보들을 FormData에 추가 (백엔드 파라미터명과 일치시켜야 함)
+    if (params.name) formData.append("name", params.name);
+    if (params.brandName) formData.append("brandName", params.brandName);
+    if (params.price) formData.append("price", params.price);
+
     const response = await fetch(API_ROUTES.GARMENTS, {
         method: "POST",
         headers: {
             Authorization: `Bearer ${token}`,
+            // 주의: FormData를 보낼 때는 Content-Type을 직접 설정하지 않습니다. (브라우저가 자동으로 Boundary를 생성함)
         },
         body: formData,
     });
 
     let data: unknown;
-
     try {
         data = await response.json();
     } catch {
@@ -50,14 +49,9 @@ export async function uploadGarmentDirect(params: {
     }
 
     if (!response.ok) {
-        const message =
-            data &&
-            typeof data === "object" &&
-            "message" in data &&
-            typeof (data as { message?: unknown }).message === "string"
-                ? (data as { message: string }).message
-                : "의류 업로드에 실패했습니다.";
-
+        const message = data && typeof data === "object" && "message" in data
+            ? String((data as { message: string }).message)
+            : "의류 업로드에 실패했습니다.";
         throw new ApiError(message, response.status, data);
     }
 

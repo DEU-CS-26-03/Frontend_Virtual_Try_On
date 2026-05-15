@@ -165,24 +165,23 @@ const Home = () => {
 
     try {
       setUploading(true);
-
-      // CATEGORY_API_MAP의 결과는 "upper" | "lower" | "overall" 임을 보장함
       const apiCategory = CATEGORY_API_MAP[formData.category];
 
-      // ★ 핵심: any를 쓰지 않고 uploadGarmentDirect가 요구하는 타입(HomeCategory 등)으로 안전하게 변환
-      // 만약 uploadGarmentDirect의 category가 HomeCategory 타입으로 묶여있다면
-      // 아래와 같이 'as unknown as HomeCategory'를 써서 문법적 오류를 방지합니다.
+      // ★ 수정: API 호출 시 모든 필드를 누락 없이 전달합니다.
       await uploadGarmentDirect({
         file: formData.file,
-        category: apiCategory as unknown as HomeCategory,
+        category: apiCategory as unknown as string,
+        name: formData.name,       // 추가됨
+        brandName: formData.brandName, // 추가됨
+        price: formData.price,      // 추가됨
       });
 
-      await loadGarments(category);
-      alert("옷 등록 성공!");
+      await loadGarments(category); // 목록 새로고침
+      alert("성공적으로 옷이 등록되었습니다!");
       setIsUploadModalOpen(false);
     } catch (error) {
       console.error("업로드 에러:", error);
-      alert("업로드 실패 (용량 1MB 제한 확인)");
+      alert("업로드 실패 (Spring 서버의 파라미터 설정을 확인해주세요)");
     } finally {
       setUploading(false);
     }
