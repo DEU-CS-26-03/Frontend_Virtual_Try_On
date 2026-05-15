@@ -1,3 +1,5 @@
+// src/pages/Home.tsx
+
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { uploadGarmentDirect } from "../api/uploadApi";
@@ -12,6 +14,25 @@ const BANNER_DATA: HomeBanner[] = [
 
 const CATEGORY_API_MAP: Record<HomeCategory, "upper" | "lower" | "overall"> = {
   all: "upper", top: "upper", bottom: "lower", outer: "upper", dress: "overall"
+};
+
+// ★ URL 변환 함수를 컴포넌트 밖으로 빼서 정리
+const normalizeFileUrl = (url?: string | null): string => {
+  if (!url) return "";
+
+  // 1. 이미 완전한 외부 URL(https)이거나 미리보기(data:)인 경우 그대로 반환
+  if (url.startsWith("https://") || url.startsWith("data:")) return url;
+
+  // 2. 구형 IP 주소로 저장된 경우 현재 API 주소로 교체
+  if (url.startsWith("http://217.142.255.158")) {
+    return url.replace("http://217.142.255.158", "https://apivirtualtryon.p-e.kr");
+  }
+
+  // 3. /files/ 로 시작하는 상대 경로인 경우 백엔드 주소를 앞에 강제로 붙임
+  const backendBase = "https://apivirtualtryon.p-e.kr";
+  const cleanUrl = url.startsWith("/") ? url : `/${url}`;
+
+  return `${backendBase}${cleanUrl}`;
 };
 
 const Home = () => {
@@ -86,7 +107,7 @@ const Home = () => {
               garmentId: g.id,
               name: g.name || "이름 없음",
               category: g.category,
-              fileUrl: g.fileUrl,
+              fileUrl: normalizeFileUrl(g.fileUrl), // ★ 여기서 함수를 사용합니다!
               price: g.price?.toLocaleString() || "0"
             }))}
             loading={loading}
