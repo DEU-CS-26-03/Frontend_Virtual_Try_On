@@ -1,10 +1,10 @@
-import React, { useState, useRef, type ChangeEvent } from "react";
+import React, { useState, useRef, type ChangeEvent, useEffect } from "react";
 import { X, Upload } from "lucide-react";
 import type { HomeCategory } from "../../pages/HomePage";
 
 // ★ any 에러 방지: 폼 데이터의 명확한 타입 정의
 export interface UploadFormData {
-  file: File;
+  file: File | null;
   garmentId: string;
   name: string;
   brandName: string;
@@ -33,6 +33,13 @@ const UploadModal = ({ isOpen, onClose, onUpload }: UploadModalProps) => {
     fileUrl: "",
   });
 
+  // ★ URL 입력 칸에 값이 바뀔 때 미리보기 화면도 즉시 동기화하는 효과
+  useEffect(() => {
+    if (formData.fileUrl && !selectedFile) {
+      setImagePreview(formData.fileUrl);
+    }
+  }, [formData.fileUrl, selectedFile]);
+
   if (!isOpen) return null;
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -47,9 +54,18 @@ const UploadModal = ({ isOpen, onClose, onUpload }: UploadModalProps) => {
     }
   };
 
+  // ★ URL 입력란의 값이 바뀔 때 실행될 핸들러
+  const handleUrlChange = (value: string) => {
+    setSelectedFile(null); // URL을 직접 입력하면 기존에 등록했던 파일 참조는 해제
+    if (fileInputRef.current) fileInputRef.current.value = ""; // 파일 input 초기화
+    
+    setFormData((prev) => ({ ...prev, fileUrl: value }));
+    setImagePreview(value || null);
+  };
+
   const handleSubmit = () => {
-    if (!selectedFile) {
-      alert("이미지를 먼저 선택해주세요.");
+    if (!selectedFile && !formData.fileUrl.trim()) {
+      alert("이미지 파일을 업로드하거나 이미지 URL을 입력해주세요.");
       return;
     }
 
@@ -127,6 +143,17 @@ const UploadModal = ({ isOpen, onClose, onUpload }: UploadModalProps) => {
               </div>
             </div>
 
+            <div>
+                <label className="text-xs font-bold text-gray-400 mb-2 block">이미지 웹 URL (선택)</label>
+                <input
+                    type="text"
+                    placeholder="https://example.com/image.jpg"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                    value={formData.fileUrl}
+                    onChange={(e) => handleUrlChange(e.target.value)}
+                />
+              </div>
+
             <div className="w-[350px] flex flex-col">
               <label className="text-xs font-bold text-gray-400 mb-2 block">이미지</label>
               <div
@@ -134,7 +161,17 @@ const UploadModal = ({ isOpen, onClose, onUpload }: UploadModalProps) => {
                   className="flex-1 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 transition-all overflow-hidden relative min-h-[250px]"
               >
                 {imagePreview ? (
-                    <img src={imagePreview} className="w-full h-full object-cover" alt="미리보기" />
+                    <img 
+                      src={imagePreview} 
+                      className="w-full h-full object-cover" 
+                      alt="미리보기" 
+                      onError={(e) => {
+                        // 잘못된 URL 입력 시 엑박 방지 처리
+                        (e.target as HTMLImageElement).src = "";
+                        alert("유효하지 않은 이미지 URL이거나 가져올 수 없는 이미지 경로입니다.");
+                        setImagePreview(null);
+                      }}
+                    />
                 ) : (
                     <>
                       <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
