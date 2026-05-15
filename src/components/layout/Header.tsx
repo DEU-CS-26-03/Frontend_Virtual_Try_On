@@ -93,42 +93,12 @@ const Header = () => {
           </span>
           </div>
 
-          <nav className="hidden md:flex items-center gap-7">
-            {["SHOP", "VIRTUAL FITTING", "COLLECTION", "MY HISTORY"].map((menu) => (
-                <button
-                    key={menu}
-                    onClick={(e) => {
-                      e.preventDefault();
-
-                      if (menu === "VIRTUAL FITTING") {
-                        navigate("/fitting");
-                      }
-
-                      if (menu === "MY HISTORY") {
-                        handleUserClick();
-                      }
-                    }}
-                    className={`text-[15px] font-black tracking-[0.2em] transition-colors ${
-                        menu === "MY HISTORY" && isLoggedIn
-                            ? "text-[#2563EB]"
-                            : "text-gray-400 hover:text-[#111111]"
-                    }`}
-                >
-                  {menu}
-                </button>
-            ))}
-          </nav>
-
           <div className="flex items-center gap-7 text-[#111111]">
             {isLoggedIn && userInfo?.nickname && (
                 <span className="text-[10px] font-bold text-[#111111] bg-white px-3 py-1 rounded-full border border-gray-200">
               {userInfo.nickname}님
             </span>
             )}
-
-            <button className="hover:scale-110 transition-transform" type="button">
-              <Globe size={22} strokeWidth={2} />
-            </button>
 
             <button
                 onClick={handleUserClick}
