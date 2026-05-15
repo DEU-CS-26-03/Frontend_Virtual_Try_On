@@ -143,6 +143,15 @@ export async function createGarment(params: {
     return fromGarmentWire(data);
 }
 
+export async function deleteGarment(garmentId: string): Promise<void> {
+    const token = localStorage.getItem("accessToken");
+    const response = await fetch(`${API_ROUTES.GARMENTS}/${garmentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error("삭제 권한이 없거나 실패했습니다.");
+}
+
 export async function getGarmentById(garmentId: string): Promise<GarmentItem> {
     const data = await apiRequest<GarmentWire>(`${API_ROUTES.GARMENTS}/${garmentId}`);
     return fromGarmentWire(data);

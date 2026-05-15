@@ -1,215 +1,122 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+// src/pages/Home.tsx
+
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { uploadGarmentDirect } from "../api/uploadApi";
-import { getGarments, type GarmentItem } from "../api/garmentApi";
-import HomePage, { type HomeBanner, type HomeCategory, type HomeDisplayGarment } from "./HomePage";
+import { getGarments, deleteGarment, type GarmentItem } from "../api/garmentApi";
+import HomePage, { type HomeBanner, type HomeCategory } from "./HomePage";
 import UploadModal, { type UploadFormData } from "../components/upload/UploadModal";
 
-// ★ 1. any 제거를 위한 백엔드 전용 카테고리 타입 선언
-type ApiCategory = "upper" | "lower" | "overall";
-
 const BANNER_DATA: HomeBanner[] = [
-  {
-    id: 1,
-    title: "상상하던 스타일, 실시간 AI 가상 피팅으로 확인하세요",
-    sub: "모델에게 옷을 입히듯, 당신의 사진 위에 새로운 스타일을 즉시 얹어보세요.",
-    img: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=1600",
-    tag: "AI VIRTUAL TRY-ON",
-  },
-  {
-    id: 2,
-    title: "클릭 한 번으로 완성되는 나만의 가상 드레스룸",
-    sub: "복잡한 시착 과정 없이 원하는 옷을 고르고 즉시 피팅 결과를 확인하세요.",
-    img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600",
-    tag: "SMART FITTING",
-  },
+  { id: 1, title: "상상하던 스타일, 실시간 AI 가상 피팅으로 확인하세요", sub: "모델에게 옷을 입히듯 스타일을 즉시 확인하세요.", img: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=1600", tag: "AI VIRTUAL TRY-ON" },
+  { id: 2, title: "클릭 한 번으로 완성되는 나만의 가상 드레스룸", sub: "원하는 옷을 고르고 즉시 피팅 결과를 확인하세요.", img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600", tag: "SMART FITTING" },
 ];
 
-const UI_CATEGORIES: ReadonlyArray<{ label: string; value: HomeCategory }> = [
-  { label: "전체", value: "all" },
-  { label: "상의", value: "top" },
-  { label: "바지", value: "bottom" },
-  { label: "아우터", value: "outer" },
-  { label: "원피스/스커트", value: "dress" },
-];
-
-const CATEGORY_LABEL_MAP: Record<HomeCategory, string> = {
-  all: "전체",
-  top: "상의",
-  bottom: "바지",
-  outer: "아우터",
-  dress: "원피스/스커트",
+const CATEGORY_API_MAP: Record<HomeCategory, "upper" | "lower" | "overall"> = {
+  all: "upper", top: "upper", bottom: "lower", outer: "upper", dress: "overall"
 };
 
-// ★ 2. CATEGORY_API_MAP에 ApiCategory 타입을 명시하여 any 발생 방지
-const CATEGORY_API_MAP: Record<HomeCategory, ApiCategory> = {
-  all: "upper",
-  top: "upper",
-  bottom: "lower",
-  outer: "upper",
-  dress: "overall",
-};
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://apivirtualtryon.p-e.kr";
-
-type ExtendedGarmentItem = GarmentItem & {
-  garmentId?: string;
-  name?: string | null;
-  brandName?: string | null;
-  category?: string | null;
-  fileUrl?: string | null;
-  thumbnailUrl?: string | null;
-  price?: number | string | null;
-};
-
+// ★ URL 변환 함수를 컴포넌트 밖으로 빼서 정리
 const normalizeFileUrl = (url?: string | null): string => {
   if (!url) return "";
-  if (url.startsWith("https://")) return url;
-  if (url.startsWith("http://217.142.255.158")) return url.replace("http://217.142.255.158", API_BASE_URL);
-  if (url.startsWith("http://")) return url.replace("http://", "https://");
-  if (url.startsWith("/")) return `${API_BASE_URL}${url}`;
-  return `${API_BASE_URL}/${url}`;
-};
 
-const normalizeCategory = (category?: string | null): HomeCategory => {
-  const value = (category ?? "").trim().toLowerCase();
-  if (["top", "상의", "shirt", "shirts"].includes(value)) return "top";
-  if (["bottom", "하의", "바지", "pants", "pant", "shorts", "trousers"].includes(value)) return "bottom";
-  if (["outer", "아우터", "jacket", "coat"].includes(value)) return "outer";
-  if (["dress", "원피스", "onepiece", "one-piece", "skirt", "치마"].includes(value)) return "dress";
-  return "all";
-};
+  // 1. 이미 완전한 외부 URL(https)이거나 미리보기(data:)인 경우 그대로 반환
+  if (url.startsWith("https://") || url.startsWith("data:")) return url;
 
-const getDisplayName = (item: GarmentItem): string => {
-  const garment = item as ExtendedGarmentItem;
-  return garment.name?.trim() || garment.brandName?.trim() || "이름 없음";
-};
+  // 2. 구형 IP 주소로 저장된 경우 현재 API 주소로 교체
+  if (url.startsWith("http://217.142.255.158")) {
+    return url.replace("http://217.142.255.158", "https://apivirtualtryon.p-e.kr");
+  }
 
-const getDisplayPrice = (price?: number | string | null): string => {
-  if (price === null || price === undefined || price === "") return "N/A";
-  if (typeof price === "number") return Number.isFinite(price) ? price.toLocaleString("ko-KR") : "N/A";
-  const raw = String(price).trim();
-  const numeric = Number(raw.replace(/,/g, ""));
-  return Number.isFinite(numeric) ? numeric.toLocaleString("ko-KR") : "N/A";
-};
+  // 3. /files/ 로 시작하는 상대 경로인 경우 백엔드 주소를 앞에 강제로 붙임
+  const backendBase = "https://apivirtualtryon.p-e.kr";
+  const cleanUrl = url.startsWith("/") ? url : `/${url}`;
 
-const toDisplayGarment = (item: GarmentItem): HomeDisplayGarment => {
-  const garment = (item as unknown) as ExtendedGarmentItem;
-  const normalizedCategory = normalizeCategory(garment.category);
-
-  return {
-    garmentId: String(garment.id || garment.garmentId || ""),
-    name: getDisplayName(item),
-    category: CATEGORY_LABEL_MAP[normalizedCategory],
-    fileUrl: normalizeFileUrl(garment.thumbnailUrl || garment.fileUrl),
-    price: getDisplayPrice(garment.price),
-  };
+  return `${backendBase}${cleanUrl}`;
 };
 
 const Home = () => {
   const navigate = useNavigate();
   const [category, setCategory] = useState<HomeCategory>("all");
-  const [currentBanner, setCurrentBanner] = useState(0);
   const [garments, setGarments] = useState<GarmentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
+  // 1. 관리자 여부 확인
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % BANNER_DATA.length);
-    }, 8000);
-    return () => clearInterval(timer);
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        setIsAdmin(payload.role === "admin" || payload.role === "ADMIN");
+      } catch { setIsAdmin(false); }
+    }
   }, []);
 
-  const loadGarments = useCallback(async (selectedCategory: HomeCategory) => {
+  // 2. 의류 목록 로드
+  const loadGarments = useCallback(async (selCat: HomeCategory) => {
     try {
       setLoading(true);
-      const data = await getGarments(selectedCategory);
+      const data = await getGarments(selCat);
       setGarments(data);
-    } catch (error) {
-      console.error("의류 목록 조회 실패:", error);
-      setGarments([]);
-    } finally {
-      setLoading(false);
-    }
+    } catch { setGarments([]); } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    void loadGarments(category);
-  }, [category, loadGarments]);
+  useEffect(() => { void loadGarments(category); }, [category, loadGarments]);
 
-  const displayGarments = useMemo(() => garments.map(toDisplayGarment), [garments]);
-
-  const handleFittingClick = (item: HomeDisplayGarment) => {
-    const token = localStorage.getItem("accessToken");
-    navigate("/fitting", {
-      state: {
-        cloth: item.fileUrl,
-        garmentId: item.garmentId,
-        name: item.name,
-        price: item.price,
-        isGuest: !token,
-      },
-    });
+  // 3. 삭제 처리
+  const handleDeleteGarment = async (id: string) => {
+    if (!window.confirm("정말 이 의류를 삭제하시겠습니까?")) return;
+    try {
+      await deleteGarment(id);
+      alert("삭제되었습니다.");
+      loadGarments(category);
+    } catch { alert("삭제 실패"); }
   };
 
-  // ★ 4. any 에러 해결된 업로드 핸들러
+  // 4. 업로드 처리
   const handleModalUpload = async (formData: UploadFormData) => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      alert("로그인이 필요합니다.");
-      navigate("/login");
-      return;
-    }
-
     try {
       setUploading(true);
-
-      // CATEGORY_API_MAP의 결과는 "upper" | "lower" | "overall" 임을 보장함
-      const apiCategory = CATEGORY_API_MAP[formData.category];
-
-      // ★ 핵심: any를 쓰지 않고 uploadGarmentDirect가 요구하는 타입(HomeCategory 등)으로 안전하게 변환
-      // 만약 uploadGarmentDirect의 category가 HomeCategory 타입으로 묶여있다면
-      // 아래와 같이 'as unknown as HomeCategory'를 써서 문법적 오류를 방지합니다.
       await uploadGarmentDirect({
         file: formData.file,
-        category: apiCategory as unknown as HomeCategory,
+        category: CATEGORY_API_MAP[formData.category],
+        name: formData.name,
+        brandName: formData.brandName,
+        price: formData.price,
       });
-
-      await loadGarments(category);
-      alert("옷 등록 성공!");
+      loadGarments(category);
       setIsUploadModalOpen(false);
-    } catch (error) {
-      console.error("업로드 에러:", error);
-      alert("업로드 실패 (용량 1MB 제한 확인)");
-    } finally {
-      setUploading(false);
-    }
+    } catch { alert("업로드 실패"); } finally { setUploading(false); }
   };
 
   return (
       <>
         <HomePage
             banners={BANNER_DATA}
-            currentBanner={currentBanner}
-            onPrevBanner={() => setCurrentBanner((prev) => (prev - 1 + BANNER_DATA.length) % BANNER_DATA.length)}
-            onNextBanner={() => setCurrentBanner((prev) => (prev + 1) % BANNER_DATA.length)}
-            categories={UI_CATEGORIES.map((item) => item.value)}
+            currentBanner={0}
+            onPrevBanner={() => {}}
+            onNextBanner={() => {}}
+            categories={["all", "top", "bottom", "outer", "dress"]}
             category={category}
             setCategory={setCategory}
             onOpenUploadModal={() => setIsUploadModalOpen(true)}
-            garments={displayGarments}
+            garments={garments.map(g => ({
+              garmentId: g.id,
+              name: g.name || "이름 없음",
+              category: g.category,
+              fileUrl: normalizeFileUrl(g.fileUrl), // ★ 여기서 함수를 사용합니다!
+              price: g.price?.toLocaleString() || "0"
+            }))}
             loading={loading}
             uploading={uploading}
-            handleFittingClick={handleFittingClick}
+            handleFittingClick={(item) => navigate("/fitting", { state: { cloth: item.fileUrl, garmentId: item.garmentId } })}
+            isAdmin={isAdmin}
+            onDelete={handleDeleteGarment}
         />
-
-        <UploadModal
-            isOpen={isUploadModalOpen}
-            onClose={() => setIsUploadModalOpen(false)}
-            onUpload={handleModalUpload}
-        />
+        <UploadModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} onUpload={handleModalUpload} />
       </>
   );
 };

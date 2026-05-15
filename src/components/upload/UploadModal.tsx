@@ -112,8 +112,8 @@ const UploadModal = ({ isOpen, onClose, onUpload }: UploadModalProps) => {
 
               <div>
                 <label className="text-xs font-bold text-gray-400 mb-2 block">타입 (카테고리)</label>
-                <div className="flex gap-4">
-                  {["top", "bottom"].map((t) => (
+                <div className="flex flex-wrap gap-4"> {/* flex-wrap으로 공간 확보 */}
+                  {["top", "bottom", "outer", "dress"].map((t) => ( // ★ 항목 추가
                       <label key={t} className="flex items-center gap-2 cursor-pointer">
                         <input
                             type="radio"
@@ -122,7 +122,10 @@ const UploadModal = ({ isOpen, onClose, onUpload }: UploadModalProps) => {
                             onChange={() => setFormData({ ...formData, category: t as HomeCategory })}
                             className="w-4 h-4 accent-[#2563EB]"
                         />
-                        <span className="text-sm font-medium text-gray-700">{t === "top" ? "상의" : "하의"}</span>
+                        <span className="text-sm font-medium text-gray-700">
+                          {/* ★ 한국어 라벨 매핑 추가 */}
+                          {t === "top" ? "상의" : t === "bottom" ? "하의" : t === "outer" ? "아우터" : "원피스"}
+                        </span>
                       </label>
                   ))}
                 </div>
