@@ -123,7 +123,6 @@ const UploadModal = ({ isOpen, onClose, onUpload }: UploadModalProps) => {
                             className="w-4 h-4 accent-[#2563EB]"
                         />
                         <span className="text-sm font-medium text-gray-700">
-                          {/* ★ 한국어 라벨 매핑 추가 */}
                           {t === "top" ? "상의" : t === "bottom" ? "하의" : t === "outer" ? "아우터" : "원피스"}
                         </span>
                       </label>
@@ -147,15 +146,15 @@ const UploadModal = ({ isOpen, onClose, onUpload }: UploadModalProps) => {
             </div>
 
             <div>
-                <label className="text-xs font-bold text-gray-400 mb-2 block">이미지 웹 URL (선택)</label>
-                <input
-                    type="text"
-                    placeholder="https://example.com/image.jpg"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#2563EB]"
-                    value={formData.fileUrl}
-                    onChange={(e) => handleUrlChange(e.target.value)}
-                />
-              </div>
+              <label className="text-xs font-bold text-gray-400 mb-2 block">이미지 웹 URL (선택)</label>
+              <input
+                type="text"
+                placeholder="https://example.com/image.jpg"
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#2563EB]"
+                value={formData.fileUrl}
+                onChange={(e) => handleUrlChange(e.target.value)}
+              />
+            </div>
 
             <div className="w-[350px] flex flex-col">
               <label className="text-xs font-bold text-gray-400 mb-2 block">이미지</label>
