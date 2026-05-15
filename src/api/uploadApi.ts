@@ -11,11 +11,12 @@ export interface UploadGarmentResult {
 
 // ★ 파라미터 타입 확장: name, brandName, price 추가
 export async function uploadGarmentDirect(params: {
-    file: File;
+    file: File | null; // ★ 파일이 선택되지 않았을 때 null 허용
     category: string;
     name?: string;
     brandName?: string;
     price?: string;
+    fileUrl?: string; // ★ URL 직접 입력 지원을 위한 선택적 필드
 }): Promise<UploadGarmentResult> {
     const token = localStorage.getItem("accessToken");
 
@@ -24,13 +25,18 @@ export async function uploadGarmentDirect(params: {
     }
 
     const formData = new FormData();
-    formData.append("file", params.file);
+    if (params.file) {
+        formData.append("file", params.file);
+    }
     formData.append("category", params.category);
 
     // ★ 추가: 텍스트 정보들을 FormData에 추가 (백엔드 파라미터명과 일치시켜야 함)
     if (params.name) formData.append("name", params.name);
     if (params.brandName) formData.append("brandName", params.brandName);
     if (params.price) formData.append("price", params.price);
+    if (params.fileUrl) {
+        formData.append("fileUrl", params.fileUrl);
+    }
 
     const response = await fetch(API_ROUTES.GARMENTS, {
         method: "POST",

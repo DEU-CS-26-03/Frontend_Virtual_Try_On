@@ -100,8 +100,8 @@ const FittingPage = () => {
                             Style Simulation
                         </p>
                         <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-100">
-                            {/* 배경: 내 사진 (흐릿하게) */}
-                            <img src={userPreviewUrl} className="w-full h-full object-cover opacity-50" alt="User" />
+                            {/* 배경: 내 사진 짤리던 오류 수정 */}
+                            <img src={userPreviewUrl} className="w-full h-full object-contain opacity-50 bg-gray-50" alt="User" />
 
                             {/* 오버레이: 선택한 옷 (선택된 카테고리에 따라 위치 이동) */}
                             <div className="absolute inset-0 flex items-center justify-center p-4">

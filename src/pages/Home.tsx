@@ -80,16 +80,24 @@ const Home = () => {
   const handleModalUpload = async (formData: UploadFormData) => {
     try {
       setUploading(true);
+
       await uploadGarmentDirect({
         file: formData.file,
         category: CATEGORY_API_MAP[formData.category],
         name: formData.name,
         brandName: formData.brandName,
         price: formData.price,
+        fileUrl: formData.fileUrl, // ★ 입력받은 이미지 주소를 API로 전달
       });
+
       loadGarments(category);
       setIsUploadModalOpen(false);
-    } catch { alert("업로드 실패"); } finally { setUploading(false); }
+    } catch (error) {
+      console.error("업로드 실패:", error);
+      alert("업로드 실패");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
