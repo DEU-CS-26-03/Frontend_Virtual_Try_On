@@ -50,7 +50,7 @@ const Header = () => {
 
   const token = (() => {
     try {
-      return sessionStorage.getItem("accessToken");
+      return localStorage.getItem("accessToken");
     } catch {
       return null;
     }
