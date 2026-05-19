@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { uploadGarmentDirect } from "../api/uploadApi";
 import { getGarments, deleteGarment, type GarmentItem } from "../api/garmentApi";
-import HomePage, { type HomeBanner, type HomeCategory } from "./HomePage";
+import HomePage, { type HomeBanner, type HomeCategory, type HomeDisplayGarment } from "./HomePage";
 import UploadModal, { type UploadFormData } from "../components/upload/UploadModal";
 
 const BANNER_DATA: HomeBanner[] = [
@@ -69,14 +69,23 @@ const Home = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // 1. 관리자 여부 확인
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
+    // localStorage에서 유저 정보가 담긴 스트링을 가져옵니다.
+    const savedUser = localStorage.getItem("user"); 
+  
+    if (savedUser) {
       try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        setIsAdmin(payload.role === "admin" || payload.role === "ADMIN");
-      } catch { setIsAdmin(false); }
+        const user = JSON.parse(savedUser);
+        console.log("현재 로그인한 유저 정보:", user);
+      
+        // 백엔드 타입에 명시된 role 값을 대소문자 모두 체크
+        setIsAdmin(user.role === "admin" || user.role === "ADMIN");
+      } catch (error) {
+        console.error("유저 정보 파싱 실패:", error);
+        setIsAdmin(false);
+      }
+    } else {
+      setIsAdmin(false);
     }
   }, []);
 
@@ -145,7 +154,7 @@ const Home = () => {
             }))}
             loading={loading}
             uploading={uploading}
-            handleFittingClick={(item) => navigate("/fitting", { state: { cloth: item.fileUrl, garmentId: item.garmentId } })}
+            handleFittingClick={(item: HomeDisplayGarment) => navigate("/fitting", { state: { cloth: item.fileUrl, garmentId: item.garmentId } })}
             isAdmin={isAdmin}
             onDelete={handleDeleteGarment}
         />

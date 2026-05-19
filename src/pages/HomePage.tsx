@@ -246,7 +246,7 @@ const HomePage = ({
                                             e.currentTarget.src = FALLBACK_IMAGE;
                                         }}
                                     />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-6">
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-6 z-10">
                                         <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-300 w-full">
                                             <button className="w-full bg-white text-black py-4 rounded-full font-black text-xs tracking-[0.2em] hover:bg-[#2563EB] hover:text-white transition-colors">
                                                 TRY ON NOW
@@ -261,22 +261,29 @@ const HomePage = ({
                                             <p className="text-[10px] font-black text-[#2563EB] tracking-widest uppercase mb-2">
                                                 {item.category}
                                             </p>
-                                            <h3 className="font-bold text-lg text-[#111111] leading-tight line-clamp-1 group-hover:text-[#2563EB] transition-colors">
-                                                {item.name}
-                                            </h3>
-                                        </div>
 
-                                        {isAdmin && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onDelete(item.garmentId);
-                                                }}
-                                                className="ml-4 p-2 text-red-500 hover:bg-red-50 rounded-full transition-all flex-shrink-0"
-                                            >
-                                                <Trash2 size={20} strokeWidth={2.5} />
-                                            </button>
-                                        )}
+                                            {/* ★ 수정된 영역: 이름과 삭제 버튼을 가로로 배치 */}
+                                            <div className="flex justify-between items-start gap-4">
+                                                <h3 className="font-bold text-lg text-[#111111] leading-tight line-clamp-2 group-hover:text-[#2563EB] transition-colors flex-1">
+                                                    {item.name}
+                                                </h3>
+
+                                                {/* ★ 관리자일 때만 휴지통 버튼 렌더링 */}
+                                                {isAdmin && (
+                                                    <button type="button" onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation(); // 카드 클릭(피팅 페이지 이동) 이벤트 전파 차단
+                                                            onDelete(item.garmentId);
+                                                        }}
+                                                        // text-gray-500으로 기본 밝기를 올리고, relative z-50을 줘서 마스크 레이어 위로 뚫고 나오게 합니다.
+                                                        className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all relative z-50 cursor-pointer"
+                                                        title="의류 삭제"
+                                                    >
+                                                        <Trash2 size={18} strokeWidth={2.5} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="mt-6 pt-6 border-t border-gray-50 flex justify-between items-center">
@@ -286,10 +293,30 @@ const HomePage = ({
                                 </div>
                             </div>
                         ))}
+                        {garments.length === 0 && (
+                            <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4 min-h-[220px] rounded-2xl border-2 border-dashed border-gray-200 bg-white flex items-center justify-center text-gray-400 font-bold">
+                                등록된 의류가 없습니다.
+                            </div>
+                        )}
+
+                        <div
+                            onClick={onOpenUploadModal} // ★ 모달 띄우기 함수 연결
+                            className="group cursor-pointer flex flex-col bg-white border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden hover:border-[#2563EB] transition-all duration-300"
+                        >
+                            <div className="aspect-[3/4] bg-gray-50 flex flex-col items-center justify-center">
+                                <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm group-hover:bg-[#2563EB] group-hover:text-white transition-all mb-4">
+                                    <Upload size={28} strokeWidth={1.5} />
+                                </div>
+                                <p className="text-sm font-bold text-gray-400 group-hover:text-[#2563EB]">직접 등록하기</p>
+                            </div>
+                            <div className="p-8 bg-white/50 text-center">
+                                <h3 className="font-bold text-gray-400">내 옷으로 시착하기</h3>
+                            </div>
+                        </div>
                     </div>
                 )}
+                </div>
             </div>
-        </div>
     );
 };
 
