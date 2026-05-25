@@ -13,8 +13,8 @@ const CautionModal = ({ isOpen, onClose, onConfirm }: CautionModalProps) => {
   const notices = [
     {
       icon: <Sun className="text-blue-500" size={20} />,
-      title: "밝은 조명",
-      desc: "자연광이 있는 밝은 장소에서 촬영해주세요.",
+      title: "조명",
+      desc: "하얀 배경이 나오지 않은 사진으로 촬영해주세요.",
     },
     {
       icon: <Camera className="text-blue-500" size={20} />,
@@ -23,13 +23,13 @@ const CautionModal = ({ isOpen, onClose, onConfirm }: CautionModalProps) => {
     },
     {
       icon: <User className="text-blue-500" size={20} />,
-      title: "정면 자세",
-      desc: "카메라를 정면으로 바라보고 편안한 자세를 취해주세요.",
+      title: "자세",
+      desc: "정면과 측면이 나오도록 촬영해주세요.(후면에서는 불가)",
     },
     {
       icon: <Shirt className="text-blue-500" size={20} />,
-      title: "몸에 맞는 옷",
-      desc: "몸의 라인이 드러나는 옷을 착용해주세요.",
+      title: "피팅 관련",
+      desc: "피팅할 옷과 같은 카테고리의 옷을 입은 이미지를 업로드하면 더욱 정확한 피팅이 가능합니다.",
     },
   ];
 
@@ -68,7 +68,7 @@ const CautionModal = ({ isOpen, onClose, onConfirm }: CautionModalProps) => {
           {/* 하단 경고 배너 */}
           <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl text-xs font-semibold leading-relaxed">
             <span className="text-orange-600 font-black">참고:</span>{' '}
-            <span className="text-gray-600">주의사항을 지키지 않을 경우 피팅 결과가 부정확할 수 있습니다.</span>
+            <span className="text-gray-600">주의사항을 준수하면 더 정확한 피팅 결과를 얻을 수 있습니다.</span>
           </div>
         </div>
 
