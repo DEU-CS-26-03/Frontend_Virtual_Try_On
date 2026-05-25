@@ -19,18 +19,18 @@ const BANNER_DATA: HomeBanner[] = [
     tag: "AI VIRTUAL TRY-ON",
     title: "상상하던 스타일,\n실시간 AI 가상 피팅으로 확인하세요", 
     sub: "모델에게 옷을 입히듯 내 스타일을 즉시 가상 공간에서 확인하세요.", 
-    beforeImg: "/before.PNG",   
-    garmentImg: "/jacket.PNG",  
-    resultImg: "/after.PNG"     
+    beforeImg: "/before.png",   
+    garmentImg: "/jacket.png",  
+    resultImg: "/after.png"     
   },
   { 
     id: 3, 
     tag: "STYLING GENERATOR",
     title: "새로운 패션 트렌드를\n정교한 생성형 AI로 매칭", 
     sub: "다양한 옷과 체형 데이터베이스를 기반으로 최상의 아웃핏을 도출합니다.", 
-    beforeImg: "/before.PNG",   
-    garmentImg: "/jacket.PNG",  
-    resultImg: "/after.PNG"     
+    beforeImg: "/woman.png",   
+    garmentImg: "/pink_Tshirt.png",  
+    resultImg: "/woman_after.PNG"     
   }
 ];
 
@@ -59,6 +59,30 @@ const Home = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isNoticeOpen, setIsNoticeOpen] = useState(false);
   const [selectedGarment, setSelectedGarment] = useState<HomeDisplayGarment | null>(null);
+
+  // 💡 [추가] 배너의 현재 인덱스를 관리하는 State
+  const [currentBanner, setCurrentBanner] = useState(0);
+
+  // 💡 [추가] 이전 배너로 이동하는 함수 (첫 페이지에서 누르면 마지막 페이지로)
+  const handlePrevBanner = () => {
+    setCurrentBanner((prev) => (prev === 0 ? BANNER_DATA.length - 1 : prev - 1));
+  };
+
+  // 💡 [추가] 다음 배너로 이동하는 함수 (마지막 페이지에서 누르면 첫 페이지로)
+  const handleNextBanner = () => {
+    setCurrentBanner((prev) => (prev === BANNER_DATA.length - 1 ? 0 : prev + 1));
+  };
+
+  // 💡 [추가] 5초마다 배너를 자동으로 넘겨주는 효과
+  useEffect(() => {
+    // 5000ms(5초)마다 handleNextBanner 실행
+    const timer = setInterval(() => {
+      handleNextBanner();
+    }, 5000);
+
+    // 🔥 중요: 사용자가 버튼을 클릭해 배너가 바뀌거나 화면을 나갈 때 타이머 리셋
+    return () => clearInterval(timer);
+  }, [handleNextBanner, currentBanner]); // 💡 currentBanner를 넣어 클릭 즉시 5초가 초기화되도록 세팅
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user"); 
@@ -139,9 +163,9 @@ const Home = () => {
       <>
         <HomePage
             banners={BANNER_DATA}
-            currentBanner={0}
-            onPrevBanner={() => {}}
-            onNextBanner={() => {}}
+            currentBanner={currentBanner} // 💡 고정값 0 대신 State 전달
+            onPrevBanner={handlePrevBanner} // 💡 빈 함수 대신 구현된 함수 전달
+            onNextBanner={handleNextBanner} // 💡 빈 함수 대신 구현된 함수 전달
             categories={["all", "top", "bottom", "outer", "dress"]}
             category={category}
             setCategory={setCategory}

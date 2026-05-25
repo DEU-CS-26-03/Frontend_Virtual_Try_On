@@ -142,13 +142,24 @@ const FittingPage = () => {
                         <span className="text-[11px] font-[1000] tracking-[0.3em] text-[#2563EB] uppercase">Step 01</span>
                         <h2 className="text-xl font-black">내 정면 사진</h2>
                     </div>
-                    <div className="h-[600px] bg-white rounded-3xl border border-gray-100 flex items-center justify-center shadow-sm overflow-hidden relative group">
+    
+                    <div className="min-h-[500px] max-h-[650px] aspect-[3/4] md:aspect-auto w-full bg-[#F9F9F9] rounded-3xl border border-gray-200 flex flex-col items-center justify-center shadow-sm overflow-hidden relative group p-4">
                         {userPreviewUrl ? (
-                            <img src={userPreviewUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Preview" />
+                            <div className="w-full h-full flex items-center justify-center">
+                                <img 
+                                    src={userPreviewUrl} 
+                                    className="max-w-full max-h-full w-auto h-auto object-contain rounded-2xl transition-transform duration-700 group-hover:scale-102" 
+                                    alt="Preview" 
+                                />
+                            </div>
                         ) : (
-                            <UploadBox />
+                            // 이미지가 없을 때는 UploadBox가 중앙에 이쁘게 나오도록 처리
+                            <div className="w-full h-full flex items-center justify-center">
+                                <UploadBox />
+                            </div>
                         )}
                     </div>
+    
                     <div className="mt-8">
                         <UploadButton onChange={setFile} />
                     </div>
