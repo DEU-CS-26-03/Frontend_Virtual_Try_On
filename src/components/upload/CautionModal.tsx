@@ -31,6 +31,11 @@ const CautionModal = ({ isOpen, onClose, onConfirm }: CautionModalProps) => {
       title: "피팅 관련",
       desc: "피팅할 옷과 같은 카테고리의 옷을 입은 이미지를 업로드하면 더욱 정확한 피팅이 가능합니다.",
     },
+    {
+      icon: <Camera className="text-blue-500" size={20} />,
+      title: "이미지 파일 형식",
+      desc: "jpg, png 형식의 이미지를 업로드하면 더욱 정확한 피팅이 가능합니다.",
+    },
   ];
 
   return (
