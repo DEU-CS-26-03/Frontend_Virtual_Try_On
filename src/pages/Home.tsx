@@ -46,9 +46,6 @@ const BANNER_DATA: HomeBanner[] = [
   }
 ];
 
-const CATEGORY_API_MAP: Record<HomeCategory, "upper" | "lower" | "overall"> = {
-  all: "upper", top: "upper", bottom: "lower", outer: "upper", dress: "overall"
-};
 
 const normalizeFileUrl = (url?: string | null): string => {
   if (!url) return "";
@@ -150,7 +147,7 @@ const Home = () => {
       setUploading(true);
       await uploadGarmentDirect({
         file: formData.file,
-        category: CATEGORY_API_MAP[formData.category],
+        category: formData.category,
         name: formData.name,
         brandName: formData.brandName,
         price: formData.price,

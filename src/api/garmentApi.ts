@@ -61,9 +61,16 @@ function normalizeFileUrl(url?: string | null): string {
     return String(url ?? "").trim();
 }
 
-function normalizeCategory(category?: string | null): string {
+// 💡 1. 백엔드에서 온 중구난방 카테고리를 프론트 탭에 맞게 완벽히 정리
+export function normalizeCategory(category?: string | null): string {
     const cat = String(category ?? "").trim().toLowerCase();
-    return cat === "upper" ? "top" : cat; // ★ 수정된 부분
+
+    if (cat === "upper" || cat === "top") return "top";
+    if (cat === "lower" || cat === "bottom") return "bottom";
+    if (cat === "overall" || cat === "dress") return "dress";
+    if (cat === "outer") return "outer";
+
+    return cat || "top";
 }
 
 function normalizePrice(value?: number | string | null): number | string | null | undefined {
@@ -116,33 +123,22 @@ function fromGarmentWire(data: GarmentWire): GarmentItem {
     };
 }
 
-export async function getGarments(category?: GarmentCategory): Promise<GarmentItem[]> {
+// 💡 2. 중간에 꼬여있던 괄호를 지우고 완벽하게 하나로 통합된 getGarments 함수
+export async function getGarments(category?: string): Promise<GarmentItem[]> {
+    // ① 전체 의류 목록을 조건 없이 다 가져옵니다.
+    const data = await apiRequest<GarmentWire[]>(API_ROUTES.GARMENTS);
 
-    // DB 저장 양식(소문자)에 맞게 프론트엔드의 탭 단어를 완벽하게 번역합니다.
-    let searchCategory: string | undefined = category;
+    // ② 가져온 데이터들의 카테고리를 프론트 기준(top, bottom, outer, dress)으로 전부 예쁘게 정리합니다.
+    const allGarments = data.map(fromGarmentWire);
 
-    if (category) {
-        const lowerCat = category.toLowerCase();
-
-        // 프론트 탭 -> 백엔드 DB 단어 변환
-        if (lowerCat === "top") {
-            searchCategory = "upper";
-        } else if (lowerCat === "bottom") {
-            searchCategory = "bottom";
-        } else if (lowerCat === "outer") {
-            searchCategory = "outer";
-        } else if (lowerCat === "dress") {
-            searchCategory = "dress";
-        }
+    // ③ 'all' 탭이거나 카테고리가 없으면 전부 보여줍니다.
+    if (!category || category === "all") {
+        return allGarments;
     }
 
-    const query =
-        searchCategory && searchCategory !== "all"
-            ? `?category=${encodeURIComponent(searchCategory)}`
-            : "";
-
-    const data = await apiRequest<GarmentWire[]>(`${API_ROUTES.GARMENTS}${query}`);
-    return data.map(fromGarmentWire);
+    // ④ 특정 탭을 눌렀을 때는 해당 탭의 이름과 정확히 일치하는 옷만 걸러서 보여줍니다.
+    const targetCategory = category.toLowerCase();
+    return allGarments.filter(item => item.category === targetCategory);
 }
 
 export async function createGarment(params: {
@@ -166,19 +162,16 @@ export async function createGarment(params: {
 export async function deleteGarment(garmentId: string): Promise<void> {
     let token = "";
 
-    // 1. 1순위: 기존 로직대로 'user' 객체에서 토큰을 꼼꼼하게 찾아봅니다.
     const savedUser = sessionStorage.getItem("user");
     if (savedUser) {
         try {
             const parsed = JSON.parse(savedUser);
-            // 백엔드 응답에 따라 키 이름이 다를 수 있으니 accessToken과 token을 모두 검사
             token = parsed.accessToken || parsed.token || "";
         } catch (e) {
             console.error("sessionStorage 'user' 파싱 실패:", e);
         }
     }
 
-    // 2. 2순위: 혹시 user 객체에 토큰이 없다면, 스토리지에 단독으로 저장된 토큰이 있는지 싹 다 뒤집니다.
     if (!token) {
         token = sessionStorage.getItem("token") ||
             sessionStorage.getItem("accessToken") ||
@@ -186,18 +179,16 @@ export async function deleteGarment(garmentId: string): Promise<void> {
             localStorage.getItem("accessToken") || "";
     }
 
-    // 3. (캡스톤 방어 코드) 토큰이 진짜 아예 없다면 굳이 에러 낼 서버까지 안 가고 여기서 컷합니다.
     if (!token) {
         alert("로그인 정보가 만료되었습니다. 다시 로그인해 주세요.");
         throw new Error("인증 토큰이 없습니다.");
     }
 
-    // 4. 안전하게 찾은 토큰을 실어서 백엔드로 삭제(DELETE) 요청
     const response = await fetch(`${API_ROUTES.GARMENTS}/${garmentId}`, {
         method: "DELETE",
         headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}` // ★ 정상적인 꽉 찬 토큰이 전달됨
+            "Authorization": `Bearer ${token}`
         },
     });
 
