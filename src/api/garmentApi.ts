@@ -62,7 +62,8 @@ function normalizeFileUrl(url?: string | null): string {
 }
 
 function normalizeCategory(category?: string | null): string {
-    return String(category ?? "").trim().toLowerCase();
+    const cat = String(category ?? "").trim().toLowerCase();
+    return cat === "upper" ? "top" : cat; // ★ 수정된 부분
 }
 
 function normalizePrice(value?: number | string | null): number | string | null | undefined {
@@ -116,9 +117,16 @@ function fromGarmentWire(data: GarmentWire): GarmentItem {
 }
 
 export async function getGarments(category?: GarmentCategory): Promise<GarmentItem[]> {
+
+    let searchCategory: string | undefined = category;
+
+    if (category === "top") {
+        searchCategory = "upper"; // 이제 에러 없이 "upper"가 잘 들어갑니다!
+    }
+
     const query =
-        category && category !== "all"
-            ? `?category=${encodeURIComponent(category)}`
+        searchCategory && searchCategory !== "all"
+            ? `?category=${encodeURIComponent(searchCategory)}`
             : "";
 
     const data = await apiRequest<GarmentWire[]>(`${API_ROUTES.GARMENTS}${query}`);

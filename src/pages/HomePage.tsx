@@ -281,7 +281,7 @@ const HomePage = ({
                                                     >
                                                         <Trash2 size={18} strokeWidth={2.5} />
                                                     </button>
-                                                )}
+                                                 )}
                                             </div>
                                         </div>
                                     </div>
