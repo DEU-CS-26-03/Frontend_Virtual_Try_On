@@ -9,7 +9,6 @@ type HeaderUserInfo = {
   role?: string;
 };
 
-// 💡 [추가된 부분]: any 대신 사용할 정확한 JWT 페이로드 타입 정의
 interface JwtPayload {
   id?: string | number;
   userId?: string | number;
@@ -22,10 +21,9 @@ interface JwtPayload {
   roles?: string;
   exp?: number;
   iat?: number;
-  [key: string]: unknown; // 명시된 속성 외에 백엔드에서 추가로 보내는 데이터 허용 (any 방어)
+  [key: string]: unknown;
 }
 
-// 💡 [수정된 부분]: parseJwtUser 함수 내부 로직 업데이트
 const parseJwtUser = (token: string): HeaderUserInfo | null => {
   try {
     const payloadPart = token.split(".")[1];
@@ -33,7 +31,6 @@ const parseJwtUser = (token: string): HeaderUserInfo | null => {
 
     const normalizedPayload = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
 
-    // decodeURIComponent와 escape를 조합하여 한글 닉네임 깨짐 및 base64 디코딩 에러 방지
     const decodedPayload = JSON.parse(
         decodeURIComponent(
             atob(normalizedPayload)
@@ -42,8 +39,6 @@ const parseJwtUser = (token: string): HeaderUserInfo | null => {
                 .join("")
         )
     ) as JwtPayload;
-
-    console.log("Header JWT Payload 확인:", decodedPayload); // 디버깅용 로그
 
     return {
       id: decodedPayload.userId || decodedPayload.id || decodedPayload.sub,
@@ -59,30 +54,49 @@ const parseJwtUser = (token: string): HeaderUserInfo | null => {
 
 const Header = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // 💡 페이지 이동 감지를 위해 추가
+  const location = useLocation();
 
-// 🛠️ 로그인 상태와 유저 정보를 담을 React 상태(State) 선언
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userInfo, setUserInfo] = useState<HeaderUserInfo | null>(null);
-
-// 🔄 페이지 라우팅 경로가 변동될 때마다 세션 스토리지를 감지하여 UI 동기화
-  useEffect(() => {
-    // 🔐 [보안 통합]: 오직 sessionStorage만 감시하도록 단일화
+  // 💡 [해결 2]: 초기 상태값을 함수형으로 지정하여, 화면이 처음 켜질 때부터 올바른 값을 가지게 합니다.
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!sessionStorage.getItem("accessToken"));
+  const [userInfo, setUserInfo] = useState<HeaderUserInfo | null>(() => {
     const token = sessionStorage.getItem("accessToken");
-    const savedUser = sessionStorage.getItem("user");
+    return token ? parseJwtUser(token) : null;
+  });
 
-    if (token && savedUser) {
-      setIsLoggedIn(true);
-      try {
-        setUserInfo(JSON.parse(savedUser) as HeaderUserInfo);
-      } catch (error) {
-        console.error("헤더 유저 정보 파싱 에러:", error);
+  useEffect(() => {
+    // 💡 [해결 1 & 2]: 비동기(async) 함수로 감싸서 동기적 setState 경고(cascading renders)를 완벽히 우회합니다.
+    const syncAuthState = async () => {
+      await Promise.resolve(); // 마이크로태스크 큐로 넘겨서 React가 렌더링을 끝낼 시간을 벌어줍니다.
+
+      const token = sessionStorage.getItem("accessToken");
+      const savedUser = sessionStorage.getItem("user");
+
+      if (token) {
+        // 💡 [미사용 에러 해결!]: 만들어둔 parseJwtUser 함수를 여기서 드디어 사용합니다.
+        const parsedInfo = parseJwtUser(token);
+        if (parsedInfo) {
+          setIsLoggedIn(true);
+          setUserInfo(parsedInfo);
+          return;
+        }
+      }
+
+      // 토큰 파싱에 실패했을 때만 기존의 savedUser 문자열을 꺼내 쓰는 폴백(Fallback) 로직
+      if (token && savedUser) {
+        setIsLoggedIn(true);
+        try {
+          setUserInfo(JSON.parse(savedUser) as HeaderUserInfo);
+        } catch (error) {
+          console.error("헤더 유저 정보 파싱 에러:", error);
+          setUserInfo(null);
+        }
+      } else {
+        setIsLoggedIn(false);
         setUserInfo(null);
       }
-    } else {
-      setIsLoggedIn(false);
-      setUserInfo(null);
-    }
+    };
+
+    void syncAuthState();
   }, [location.pathname]);
 
   const handleUserClick = () => {
@@ -95,7 +109,6 @@ const Header = () => {
 
   const handleLogout = () => {
     if (!window.confirm("로그아웃 하시겠습니까?")) return;
-  // 🔐 세션 스토리지 완전 보이드(Void) 처리
     sessionStorage.removeItem("accessToken");
     sessionStorage.removeItem("user");
     navigate("/");
@@ -103,7 +116,7 @@ const Header = () => {
   };
 
   return (
-      <header className="w-full bg-[#F5F5F3] sticky top-0 z-[100] border-b border-gray-100">
+      <header className="w-full bg-[#F5F5F3] sticky top-0 z-[100] shadow-md border-b border-gray-200 transition-all">
         <div className="max-w-[1600px] mx-auto px-10 h-24 flex items-center justify-between">
           <div
               onClick={() => navigate("/")}
@@ -118,8 +131,7 @@ const Header = () => {
           </div>
 
           <div className="flex items-center gap-7 text-[#111111]">
-            
-            {/* 💡 수정됨: userInfo 전체가 아니라 nickname만 없더라도 isLoggedIn 상태면 기본 표출되도록 방어 */}
+
             {isLoggedIn && (
                 <span className="text-[10px] font-bold text-[#111111] bg-white px-3 py-1 rounded-full border border-gray-200">
               {userInfo?.nickname || "정상 로그인됨"}님
