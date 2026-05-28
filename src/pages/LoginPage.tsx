@@ -2,18 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_ROUTES, apiRequest, ApiError } from "../api/client";
 
-// 🔐 백엔드 Spring Boot DB 구조와 완벽히 일치하는 단일 응답 명세 타입
-interface LoginResponse {
-  accessToken?: string;
-  tokenType?: string;
-  user?: {
-    id: number;
-    email: string;
-    nickname: string;
-    role: string;
-  };
-  message?: string;
-}
+// 🗑️ 맨 위에 있던 interface LoginResponse 부분은 삭제했습니다. (아래 함수 안에 이미 선언되어 있습니다)
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -33,6 +22,7 @@ const LoginPage = () => {
         password: string;
       };
 
+      // 여기서 타입을 선언해서 쓰고 있으므로 위쪽의 인터페이스는 필요 없습니다.
       type LoginResponse = {
         accessToken?: string;
         refreshToken?: string;
@@ -41,6 +31,7 @@ const LoginPage = () => {
           id?: string;
           email?: string;
           name?: string;
+          role?: string;
         };
         message?: string;
       };
@@ -68,7 +59,6 @@ const LoginPage = () => {
         console.warn("주의: 백엔드 응답에 user 객체가 존재하지 않습니다.");
       }
       alert("로그인 성공!");
-      // 2. 🛠️ navigate 대신 window.location.href를 사용하여 세션을 새로고침하며 메인으로 이동
       window.location.href = "/";
     } catch (error) {
       console.error("Login Error:", error);
