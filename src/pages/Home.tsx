@@ -13,6 +13,9 @@ interface LocalUser {
   email?: string;
   nickname?: string;
   role?: string;
+  user?: {
+    role?: string;
+  };
 }
 
 const BANNER_DATA: HomeBanner[] = [
@@ -104,12 +107,12 @@ const Home = () => {
         const user = JSON.parse(savedUser) as LocalUser;
       
         // 2. 가끔 객체 안에 user가 또 들어있는 경우가 있어 방어 코드 작성
-        const rawRole = user.role || (user as any).user?.role || ""; 
+        const rawRole = user.role || user.user?.role || "";
         const userRole = String(rawRole).trim().toUpperCase();
       
         console.log("추출된 유저 권한(Role):", userRole);
     
-        if (userRole === "ADMIN") {
+        if (userRole === "ADMIN" || userRole === "admin") {
           setIsAdmin(true);
         } else {
           setIsAdmin(false);

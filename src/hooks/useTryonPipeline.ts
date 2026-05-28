@@ -47,7 +47,7 @@ export function useTryonPipeline() {
 
                 if (currentStatus === "COMPLETED") {
                     setState(s => ({ 
-                        ...s, 
+                        ...s,
                         status: "done", 
                         job: job, // job 업데이트 추가
                         resultImageUrl: job.resultImageUrl // string | undefined를 허용함
