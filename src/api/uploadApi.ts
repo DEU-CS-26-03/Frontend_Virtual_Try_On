@@ -9,16 +9,32 @@ export interface UploadGarmentResult {
     fileUrl?: string;
 }
 
-// ★ 파라미터 타입 확장: name, brandName, price 추가
 export async function uploadGarmentDirect(params: {
-    file: File | null; // ★ 파일이 선택되지 않았을 때 null 허용
+    file: File | null;
     category: string;
     name?: string;
     brandName?: string;
     price?: string;
-    fileUrl?: string; // ★ URL 직접 입력 지원을 위한 선택적 필드
+    fileUrl?: string;
 }): Promise<UploadGarmentResult> {
-    const token = localStorage.getItem("accessToken");
+
+    // 💡 [수정된 부분]: 완벽한 토큰 탐색 로직 (user 파싱 포함)
+    let token = "";
+    const savedUser = sessionStorage.getItem("user");
+    if (savedUser) {
+        try {
+            const parsed = JSON.parse(savedUser);
+            token = parsed.accessToken || parsed.token || "";
+        } catch (e) {
+            console.error("토큰 파싱 에러:", e);
+        }
+    }
+    if (!token) {
+        token = sessionStorage.getItem("token") ||
+            sessionStorage.getItem("accessToken") ||
+            localStorage.getItem("token") ||
+            localStorage.getItem("accessToken") || "";
+    }
 
     if (!token) {
         throw new ApiError("로그인이 필요합니다.", 401);
@@ -30,7 +46,6 @@ export async function uploadGarmentDirect(params: {
     }
     formData.append("category", params.category);
 
-    // ★ 추가: 텍스트 정보들을 FormData에 추가 (백엔드 파라미터명과 일치시켜야 함)
     if (params.name) formData.append("name", params.name);
     if (params.brandName) formData.append("brandName", params.brandName);
     if (params.price) formData.append("price", params.price);
@@ -42,7 +57,7 @@ export async function uploadGarmentDirect(params: {
         method: "POST",
         headers: {
             Authorization: `Bearer ${token}`,
-            // 주의: FormData를 보낼 때는 Content-Type을 직접 설정하지 않습니다. (브라우저가 자동으로 Boundary를 생성함)
+            // 주의: FormData를 보낼 때는 Content-Type을 직접 설정하지 않습니다.
         },
         body: formData,
     });

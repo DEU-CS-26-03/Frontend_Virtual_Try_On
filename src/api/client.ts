@@ -35,9 +35,24 @@ type ApiRequestOptions = RequestInit & {
   token?: string | null;
 };
 
+// 💡 [수정된 부분]: 공통으로 쓰이는 토큰 추출 로직 강화
 function getAccessToken(): string | null {
   try {
-    return localStorage.getItem("accessToken");
+    let token = "";
+    const savedUser = sessionStorage.getItem("user");
+    if (savedUser) {
+      const parsed = JSON.parse(savedUser);
+      token = parsed.accessToken || parsed.token || "";
+    }
+
+    if (!token) {
+      token = sessionStorage.getItem("token") ||
+          sessionStorage.getItem("accessToken") ||
+          localStorage.getItem("token") ||
+          localStorage.getItem("accessToken") || "";
+    }
+
+    return token ? token : null;
   } catch {
     return null;
   }
