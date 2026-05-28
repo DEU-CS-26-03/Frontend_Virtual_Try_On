@@ -152,14 +152,31 @@ export async function createGarment(params: {
 }
 
 export async function deleteGarment(garmentId: string): Promise<void> {
-    // 💡 수정: 기존 "accessToken"에서 "token"으로 변경 (본인 프로젝트의 실제 로그인 저장 키에 맞추세요!)
-    const token = localStorage.getItem("token");
+    const savedUser = sessionStorage.getItem("user");
+    let token = "";
+
+    if (savedUser) {
+        try {
+            const parsed = JSON.parse(savedUser);
+            // 원본 LoginResponse 객체가 통째로 박혀있으므로 루트 레벨의 accessToken을 파싱합니다.
+            token = parsed.accessToken || "";
+        } catch (e) {
+            console.error("sessionStorage 'user' 파싱 실패:", e);
+        }
+    }
 
     const response = await fetch(`${API_ROUTES.GARMENTS}/${garmentId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}` // 정상적인 토큰이 바인딩되어 전달됩니다.
+        },
     });
-    if (!response.ok) throw new Error("삭제 권한이 없거나 실패했습니다.");
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `삭제 실패 (Status: ${response.status})`);
+    }
 }
 
 export async function getGarmentById(garmentId: string): Promise<GarmentItem> {

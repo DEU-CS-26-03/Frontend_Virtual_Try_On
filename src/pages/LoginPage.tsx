@@ -2,6 +2,19 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_ROUTES, apiRequest, ApiError } from "../api/client";
 
+// 🔐 백엔드 Spring Boot DB 구조와 완벽히 일치하는 단일 응답 명세 타입
+interface LoginResponse {
+  accessToken?: string;
+  tokenType?: string;
+  user?: {
+    id: number;
+    email: string;
+    nickname: string;
+    role: string;
+  };
+  message?: string;
+}
+
 const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -48,8 +61,15 @@ const LoginPage = () => {
         throw new ApiError(data.message || "토큰이 응답에 없습니다.", 401, data);
       }
       sessionStorage.setItem("accessToken", token);
+
+      if (data.user) {
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+      } else {
+        console.warn("주의: 백엔드 응답에 user 객체가 존재하지 않습니다.");
+      }
       alert("로그인 성공!");
-      navigate("/", { replace: true });
+      // 2. 🛠️ navigate 대신 window.location.href를 사용하여 세션을 새로고침하며 메인으로 이동
+      window.location.href = "/";
     } catch (error) {
       console.error("Login Error:", error);
 

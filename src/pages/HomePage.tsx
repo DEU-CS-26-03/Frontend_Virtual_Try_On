@@ -263,25 +263,25 @@ const HomePage = ({
                                             </p>
 
                                             {/* ★ 수정된 영역: 이름과 삭제 버튼을 가로로 배치 */}
-                                            <div className="flex justify-between items-start gap-4">
+                                            <div className="flex justify-between items-start gap-3 w-full">
                                                 <h3 className="font-bold text-lg text-[#111111] leading-tight line-clamp-2 group-hover:text-[#2563EB] transition-colors flex-1">
                                                     {item.name}
                                                 </h3>
-
                                                 {/* ★ 관리자일 때만 휴지통 버튼 렌더링 */}
                                                 {isAdmin && (
-                                                    <button type="button" onClick={(e) => {
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={(e) => {
                                                             e.preventDefault();
-                                                            e.stopPropagation(); // 카드 클릭(피팅 페이지 이동) 이벤트 전파 차단
+                                                            e.stopPropagation(); 
                                                             onDelete(item.garmentId);
                                                         }}
-                                                        // text-gray-500으로 기본 밝기를 올리고, relative z-50을 줘서 마스크 레이어 위로 뚫고 나오게 합니다.
-                                                        className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all relative z-50 cursor-pointer"
+                                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all relative z-[30] cursor-pointer"
                                                         title="의류 삭제"
                                                     >
                                                         <Trash2 size={18} strokeWidth={2.5} />
                                                     </button>
-                                                 )}
+                                                )}
                                             </div>
                                         </div>
                                     </div>

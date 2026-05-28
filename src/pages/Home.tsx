@@ -6,6 +6,15 @@ import HomePage, { type HomeBanner, type HomeCategory, type HomeDisplayGarment }
 import UploadModal, { type UploadFormData } from "../components/upload/UploadModal";
 import CautionModal from "../components/upload/CautionModal";
 
+// Home.tsx 내부의 유저 타입 선언
+interface LocalUser {
+  id?: number;
+  username?: string;
+  email?: string;
+  nickname?: string;
+  role?: string;
+}
+
 const BANNER_DATA: HomeBanner[] = [
   { 
     id: 1, 
@@ -85,11 +94,26 @@ const Home = () => {
   }, [handleNextBanner, currentBanner]); // 💡 currentBanner를 넣어 클릭 즉시 5초가 초기화되도록 세팅
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user"); 
+    const savedUser = sessionStorage.getItem("user"); 
+  
+    // 1. 데이터가 아예 안 들어왔는지 브라우저 콘솔(F12)에서 확인
+    console.log("현재 sessionStorage 'user' 데이터:", savedUser);
+
     if (savedUser) {
       try {
-        const user = JSON.parse(savedUser);
-        setIsAdmin(user.role === "admin" || user.role === "ADMIN");
+        const user = JSON.parse(savedUser) as LocalUser;
+      
+        // 2. 가끔 객체 안에 user가 또 들어있는 경우가 있어 방어 코드 작성
+        const rawRole = user.role || (user as any).user?.role || ""; 
+        const userRole = String(rawRole).trim().toUpperCase();
+      
+        console.log("추출된 유저 권한(Role):", userRole);
+    
+        if (userRole === "ADMIN") {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
       } catch (error) {
         console.error("유저 정보 파싱 실패:", error);
         setIsAdmin(false);

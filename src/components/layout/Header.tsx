@@ -1,4 +1,5 @@
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { User, Menu, LogOut } from "lucide-react";
 
 type HeaderUserInfo = {
@@ -58,18 +59,31 @@ const parseJwtUser = (token: string): HeaderUserInfo | null => {
 
 const Header = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // 💡 페이지 이동 감지를 위해 추가
 
-  const token = (() => {
-    try {
-      // 💡 오직 세션 스토리지방만 확인해서 개인정보 보안 유지
-      return sessionStorage.getItem("token") || sessionStorage.getItem("accessToken");
-    } catch {
-      return null;
+// 🛠️ 로그인 상태와 유저 정보를 담을 React 상태(State) 선언
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userInfo, setUserInfo] = useState<HeaderUserInfo | null>(null);
+
+// 🔄 페이지 라우팅 경로가 변동될 때마다 세션 스토리지를 감지하여 UI 동기화
+  useEffect(() => {
+    // 🔐 [보안 통합]: 오직 sessionStorage만 감시하도록 단일화
+    const token = sessionStorage.getItem("accessToken");
+    const savedUser = sessionStorage.getItem("user");
+
+    if (token && savedUser) {
+      setIsLoggedIn(true);
+      try {
+        setUserInfo(JSON.parse(savedUser) as HeaderUserInfo);
+      } catch (error) {
+        console.error("헤더 유저 정보 파싱 에러:", error);
+        setUserInfo(null);
+      }
+    } else {
+      setIsLoggedIn(false);
+      setUserInfo(null);
     }
-  })();
-
-  const isLoggedIn = !!token;
-  const userInfo = token ? parseJwtUser(token) : null;
+  }, [location.pathname]);
 
   const handleUserClick = () => {
     if (!isLoggedIn) {
@@ -81,9 +95,9 @@ const Header = () => {
 
   const handleLogout = () => {
     if (!window.confirm("로그아웃 하시겠습니까?")) return;
-    // 로그아웃 시 세션 깔끔하게 청소
-    sessionStorage.removeItem("token");
+  // 🔐 세션 스토리지 완전 보이드(Void) 처리
     sessionStorage.removeItem("accessToken");
+    sessionStorage.removeItem("user");
     navigate("/");
     window.location.reload();
   };
