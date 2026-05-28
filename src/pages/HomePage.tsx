@@ -237,7 +237,12 @@ const HomePage = ({
                                 onClick={() => handleFittingClick(item)}
                             >
                                 <div className="relative aspect-[3/4] overflow-hidden bg-[#F9F9F9]">
-                                    <FavoriteButton garmentId={item.garmentId} />
+                                    <div
+                                        className="absolute top-3 right-3 z-20"
+                                        onClick={(e) => { e.stopPropagation(); }}
+                                    >
+                                        <FavoriteButton garmentId={item.garmentId} />
+                                    </div>
                                     <img
                                         src={item.fileUrl || FALLBACK_IMAGE}
                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
