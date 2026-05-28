@@ -1,11 +1,10 @@
-// src/pages/ResultPage.tsx
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Star, Download, RotateCcw, Camera, CheckCircle2, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import Header from "../components/layout/Header";
 import { getTryonStatus } from "../api/tryonApi";
 import type { ClothCategory } from "../api/tryonApi";
-import html2canvas from "html2canvas";
+// 🗑️ [수정됨]: 에러의 원인이었던 html2canvas 임포트 완전 삭제
 
 type ResultPageState = {
   tryonId?: string;
@@ -23,7 +22,7 @@ interface RecommendItem {
   fileUrl: string;
 }
 
-// ★ 추가됨: 백엔드(Spring) API에서 보내주는 원본 JSON 데이터 규격 선언 ('any' 에러 해결)
+// 백엔드 API 데이터 규격 선언
 interface GarmentApiResponse {
   garmentId?: string;
   id?: string;
@@ -49,7 +48,6 @@ const ResultPage = () => {
   const [isRecLoading, setIsRecLoading] = useState(false);
 
   const pollTimerRef = useRef<number | undefined>(undefined);
-  const captureRef = useRef<HTMLDivElement>(null); // AI 결과 이미지 캡처용 참조
 
   const finalUserImage = userPreview || uploadedUserImageUrl || null;
 
@@ -66,28 +64,27 @@ const ResultPage = () => {
     return "준비 중...";
   };
 
-  // AI 결과 이미지 다운로드 핸들러
+  // 💡 [수정됨]: html2canvas 스크린샷 대신, 완성된 이미지 자체를 다운로드하는 안전한 로직
   const handleDownload = async () => {
-    if (!captureRef.current) return;
-    
+    if (!resultImage) return;
+
     try {
-      // 화면에 보이는 하얀색 라운드 카드 div를 통째로 캡처 (배경 투명도 처리 및 고화질 설정)
-      const canvas = await html2canvas(captureRef.current, {
-        useCORS: true,         // AI 서버 이미지(외부 URL)를 캡처하기 위해 필수
-        backgroundColor: null, // 원본 스타일의 bg-white와 rounded를 그대로 유지
-        scale: 2,              // 다운로드 이미지 화질을 2배로 선명하게 향상
-      });
-      
-      const image = canvas.toDataURL("image/jpeg", 0.95);
+      // 이미지 URL을 가져와서 Blob(파일 객체)로 변환 후 브라우저 다운로드 실행
+      const response = await fetch(resultImage);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
       const link = document.createElement("a");
-      link.href = image;
-      link.download = `style_fitting_${tryonId}.jpg`;
+      link.href = url;
+      link.download = `style_fitting_${tryonId || "result"}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("이미지 다운로드 중 오류 발생:", error);
-      alert("이미지 다운로드에 실패했습니다. 이미지 서버 보안 설정을 확인하세요.");
+      console.error("다운로드 중 오류 발생:", error);
+      // 만약 다운로드가 막힌다면 새 창에서 이미지를 열어주어 사용자가 직접 저장하게 유도
+      window.open(resultImage, "_blank");
     }
   };
 
@@ -145,7 +142,6 @@ const ResultPage = () => {
 
         if (response.ok) {
           const data = await response.json();
-          // ★ 수정됨: (item: any) 대신 (item: GarmentApiResponse)를 사용하여 타입 안정성 확보
           const mappedItems: RecommendItem[] = data.map((item: GarmentApiResponse) => ({
             id: item.garmentId || item.id || "0",
             brandName: item.brandKey || "CapStone",
@@ -208,7 +204,7 @@ const ResultPage = () => {
 
           <div className="space-y-5">
             <span className="text-[11px] font-[1000] text-[#2563EB] uppercase px-2 tracking-[0.2em]">AI Generated Style</span>
-            <div ref={captureRef} className ="relative aspect-[3/4] bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-2xl flex items-center justify-center">
+            <div className ="relative aspect-[3/4] bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-2xl flex items-center justify-center">
               {loading ? (
                   <div className="text-center space-y-4 px-8">
                     <Loader2 className="w-12 h-12 animate-spin text-[#2563EB] mx-auto" />
@@ -222,6 +218,7 @@ const ResultPage = () => {
                   <>
                     <img src={resultImage || ""} className="w-full h-full object-contain bg-white animate-in fade-in duration-1000" alt="Result" />
                     <div className="absolute top-6 left-6 bg-[#2563EB] text-white px-5 py-1.5 rounded-full text-[10px] font-black uppercase shadow-lg">Generated</div>
+                    {/* 다운로드 버튼 클릭 시 handleDownload 호출 */}
                     <button onClick={handleDownload} className="absolute bottom-8 right-8 p-6 bg-[#111111] text-white rounded-full hover:scale-110 transition-all shadow-2xl group">
                       <Download size={24} className="group-hover:-translate-y-1 transition-transform" />
                     </button>
