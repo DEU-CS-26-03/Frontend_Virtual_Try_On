@@ -118,10 +118,22 @@ function fromGarmentWire(data: GarmentWire): GarmentItem {
 
 export async function getGarments(category?: GarmentCategory): Promise<GarmentItem[]> {
 
+    // DB 저장 양식(소문자)에 맞게 프론트엔드의 탭 단어를 완벽하게 번역합니다.
     let searchCategory: string | undefined = category;
 
-    if (category === "top") {
-        searchCategory = "upper"; // 이제 에러 없이 "upper"가 잘 들어갑니다!
+    if (category) {
+        const lowerCat = category.toLowerCase();
+
+        // 프론트 탭 -> 백엔드 DB 단어 변환
+        if (lowerCat === "top") {
+            searchCategory = "upper";
+        } else if (lowerCat === "bottom") {
+            searchCategory = "bottom";
+        } else if (lowerCat === "outer") {
+            searchCategory = "outer";
+        } else if (lowerCat === "dress") {
+            searchCategory = "dress";
+        }
     }
 
     const query =
@@ -174,7 +186,7 @@ export async function deleteGarment(garmentId: string): Promise<void> {
             localStorage.getItem("accessToken") || "";
     }
 
-    // 🚨 3. (캡스톤 방어 코드) 토큰이 진짜 아예 없다면 굳이 에러 낼 서버까지 안 가고 여기서 컷합니다.
+    // 3. (캡스톤 방어 코드) 토큰이 진짜 아예 없다면 굳이 에러 낼 서버까지 안 가고 여기서 컷합니다.
     if (!token) {
         alert("로그인 정보가 만료되었습니다. 다시 로그인해 주세요.");
         throw new Error("인증 토큰이 없습니다.");
