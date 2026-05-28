@@ -69,9 +69,9 @@ const Home = () => {
   };
 
   // 💡 [추가] 다음 배너로 이동하는 함수 (마지막 페이지에서 누르면 첫 페이지로)
-  const handleNextBanner = () => {
+  const handleNextBanner = useCallback(() => {
     setCurrentBanner((prev) => (prev === BANNER_DATA.length - 1 ? 0 : prev + 1));
-  };
+  }, []); // 빈 배열을 넣어 함수가 처음 한 번만 생성되도록 고정
 
   // 💡 [추가] 5초마다 배너를 자동으로 넘겨주는 효과
   useEffect(() => {
@@ -114,8 +114,8 @@ const Home = () => {
     try {
       await deleteGarment(id);
       alert("삭제되었습니다.");
-      loadGarments(category);
-    } catch { alert("삭제 실패"); }
+      loadGarments(category); // 삭제 후 새로고침
+    } catch { alert("삭제 권한이 없거나 서버 오류입니다."); }
   };
 
   const handleModalUpload = async (formData: UploadFormData) => {

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { User, Globe, Menu, LogOut } from "lucide-react";
+import { User, Menu, LogOut } from "lucide-react";
 
 type HeaderUserInfo = {
   id?: number | string;
@@ -8,30 +8,45 @@ type HeaderUserInfo = {
   role?: string;
 };
 
-// 백엔드 Spring JWT 구조에 맞춰 유연하게 파싱하도록 개선된 함수
+// 💡 [추가된 부분]: any 대신 사용할 정확한 JWT 페이로드 타입 정의
+interface JwtPayload {
+  id?: string | number;
+  userId?: string | number;
+  sub?: string;
+  email?: string;
+  username?: string;
+  nickname?: string;
+  name?: string;
+  role?: string;
+  roles?: string;
+  exp?: number;
+  iat?: number;
+  [key: string]: unknown; // 명시된 속성 외에 백엔드에서 추가로 보내는 데이터 허용 (any 방어)
+}
+
+// 💡 [수정된 부분]: parseJwtUser 함수 내부 로직 업데이트
 const parseJwtUser = (token: string): HeaderUserInfo | null => {
   try {
     const payloadPart = token.split(".")[1];
     if (!payloadPart) return null;
 
     const normalizedPayload = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+
     // decodeURIComponent와 escape를 조합하여 한글 닉네임 깨짐 및 base64 디코딩 에러 방지
     const decodedPayload = JSON.parse(
-      decodeURIComponent(
-        atob(normalizedPayload)
-          .split("")
-          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-          .join("")
-      )
-    ) as Record<string, any>;
+        decodeURIComponent(
+            atob(normalizedPayload)
+                .split("")
+                .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+                .join("")
+        )
+    ) as JwtPayload;
 
     console.log("Header JWT Payload 확인:", decodedPayload); // 디버깅용 로그
 
     return {
-      // Spring Security 표준인 sub(username) 또는 id, userId 대응
       id: decodedPayload.userId || decodedPayload.id || decodedPayload.sub,
       email: decodedPayload.email || decodedPayload.username,
-      // 백엔드 세팅에 따라 다를 수 있는 닉네임/이름 필드 전부 대응
       nickname: decodedPayload.nickname || decodedPayload.name || decodedPayload.username || "사용자",
       role: decodedPayload.role || decodedPayload.roles,
     };

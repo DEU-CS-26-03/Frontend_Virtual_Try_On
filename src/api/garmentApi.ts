@@ -144,7 +144,9 @@ export async function createGarment(params: {
 }
 
 export async function deleteGarment(garmentId: string): Promise<void> {
-    const token = localStorage.getItem("accessToken");
+    // 💡 수정: 기존 "accessToken"에서 "token"으로 변경 (본인 프로젝트의 실제 로그인 저장 키에 맞추세요!)
+    const token = localStorage.getItem("token");
+
     const response = await fetch(`${API_ROUTES.GARMENTS}/${garmentId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },

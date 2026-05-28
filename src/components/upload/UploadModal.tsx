@@ -1,8 +1,7 @@
-import React, { useState, useRef, type ChangeEvent, useEffect } from "react";
+import React, { useState, useRef, type ChangeEvent } from "react";
 import { X, Upload } from "lucide-react";
 import type { HomeCategory } from "../../pages/HomePage";
 
-// ★ any 에러 방지: 폼 데이터의 명확한 타입 정의
 export interface UploadFormData {
   file: File | null;
   garmentId: string;
@@ -10,6 +9,7 @@ export interface UploadFormData {
   brandName: string;
   category: HomeCategory;
   price: string;
+  // 백엔드에서 파일 저장 후 경로를 자동 생성하므로 빈 문자열로 보냅니다.
   fileUrl: string;
 }
 
@@ -30,49 +30,35 @@ const UploadModal = ({ isOpen, onClose, onUpload }: UploadModalProps) => {
     brandName: "",
     category: "top" as HomeCategory,
     price: "",
-    fileUrl: "",
   });
-
-  // ★ URL 입력 칸에 값이 바뀔 때 미리보기 화면도 즉시 동기화하는 효과
-  useEffect(() => {
-    if (formData.fileUrl && !selectedFile) {
-      setImagePreview(formData.fileUrl);
-    }
-  }, [formData.fileUrl, selectedFile]);
 
   if (!isOpen) return null;
 
+  // 내 PC에서 이미지 파일을 골랐을 때 실행되는 함수
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      setFormData((prev) => ({ ...prev, fileUrl: `/files/garments/${file.name}` }));
 
+      // 브라우저에서 사용자에게 미리보기만 보여주기 위한 처리
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  // ★ URL 입력란의 값이 바뀔 때 실행될 핸들러
-  const handleUrlChange = (value: string) => {
-    setSelectedFile(null); // URL을 직접 입력하면 기존에 등록했던 파일 참조는 해제
-    if (fileInputRef.current) fileInputRef.current.value = ""; // 파일 input 초기화
-    
-    setFormData((prev) => ({ ...prev, fileUrl: value }));
-    setImagePreview(value || null);
-  };
-
+  // 등록하기 버튼 눌렀을 때 실행
   const handleSubmit = () => {
-    if (!selectedFile && !formData.fileUrl.trim()) {
-      alert("이미지 파일을 업로드하거나 이미지 URL을 입력해주세요.");
+    if (!selectedFile) {
+      alert("PC에서 옷 이미지 파일을 선택해주세요.");
       return;
     }
 
-    // 부모 컴포넌트로 데이터 전체 전달
+    // 부모 컴포넌트(Home.tsx)로 파일과 입력된 정보를 넘김
     onUpload({
       ...formData,
       file: selectedFile,
+      fileUrl: "", // URL은 백엔드에서 자동 부여하므로 프론트에선 신경 쓰지 않음
     });
   };
 
@@ -112,8 +98,8 @@ const UploadModal = ({ isOpen, onClose, onUpload }: UploadModalProps) => {
 
               <div>
                 <label className="text-xs font-bold text-gray-400 mb-2 block">타입 (카테고리)</label>
-                <div className="flex flex-wrap gap-4"> {/* flex-wrap으로 공간 확보 */}
-                  {["top", "bottom", "outer", "dress"].map((t) => ( // ★ 항목 추가
+                <div className="flex flex-wrap gap-4">
+                  {["top", "bottom", "outer", "dress"].map((t) => (
                       <label key={t} className="flex items-center gap-2 cursor-pointer">
                         <input
                             type="radio"
@@ -145,35 +131,15 @@ const UploadModal = ({ isOpen, onClose, onUpload }: UploadModalProps) => {
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-bold text-gray-400 mb-2 block">이미지 웹 URL (선택)</label>
-              <input
-                type="text"
-                placeholder="https://example.com/image.jpg"
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#2563EB]"
-                value={formData.fileUrl}
-                onChange={(e) => handleUrlChange(e.target.value)}
-              />
-            </div>
-
+            {/* 💡 URL 텍스트 박스가 있던 곳을 완전히 삭제하고 업로드 영역만 남김 */}
             <div className="w-[350px] flex flex-col">
-              <label className="text-xs font-bold text-gray-400 mb-2 block">이미지</label>
+              <label className="text-xs font-bold text-gray-400 mb-2 block">로컬 이미지 파일 선택 (필수)</label>
               <div
                   onClick={() => fileInputRef.current?.click()}
                   className="flex-1 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 transition-all overflow-hidden relative min-h-[250px]"
               >
                 {imagePreview ? (
-                    <img 
-                      src={imagePreview} 
-                      className="w-full h-full object-cover" 
-                      alt="미리보기" 
-                      onError={(e) => {
-                        // 잘못된 URL 입력 시 엑박 방지 처리
-                        (e.target as HTMLImageElement).src = "";
-                        alert("유효하지 않은 이미지 URL이거나 가져올 수 없는 이미지 경로입니다.");
-                        setImagePreview(null);
-                      }}
-                    />
+                    <img src={imagePreview} className="w-full h-full object-cover" alt="미리보기" />
                 ) : (
                     <>
                       <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
