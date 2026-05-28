@@ -152,24 +152,40 @@ export async function createGarment(params: {
 }
 
 export async function deleteGarment(garmentId: string): Promise<void> {
-    const savedUser = sessionStorage.getItem("user");
     let token = "";
 
+    // 1. 1순위: 기존 로직대로 'user' 객체에서 토큰을 꼼꼼하게 찾아봅니다.
+    const savedUser = sessionStorage.getItem("user");
     if (savedUser) {
         try {
             const parsed = JSON.parse(savedUser);
-            // 원본 LoginResponse 객체가 통째로 박혀있으므로 루트 레벨의 accessToken을 파싱합니다.
-            token = parsed.accessToken || "";
+            // 백엔드 응답에 따라 키 이름이 다를 수 있으니 accessToken과 token을 모두 검사
+            token = parsed.accessToken || parsed.token || "";
         } catch (e) {
             console.error("sessionStorage 'user' 파싱 실패:", e);
         }
     }
 
+    // 2. 2순위: 혹시 user 객체에 토큰이 없다면, 스토리지에 단독으로 저장된 토큰이 있는지 싹 다 뒤집니다.
+    if (!token) {
+        token = sessionStorage.getItem("token") ||
+            sessionStorage.getItem("accessToken") ||
+            localStorage.getItem("token") ||
+            localStorage.getItem("accessToken") || "";
+    }
+
+    // 🚨 3. (캡스톤 방어 코드) 토큰이 진짜 아예 없다면 굳이 에러 낼 서버까지 안 가고 여기서 컷합니다.
+    if (!token) {
+        alert("로그인 정보가 만료되었습니다. 다시 로그인해 주세요.");
+        throw new Error("인증 토큰이 없습니다.");
+    }
+
+    // 4. 안전하게 찾은 토큰을 실어서 백엔드로 삭제(DELETE) 요청
     const response = await fetch(`${API_ROUTES.GARMENTS}/${garmentId}`, {
         method: "DELETE",
-        headers: { 
+        headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}` // 정상적인 토큰이 바인딩되어 전달됩니다.
+            "Authorization": `Bearer ${token}` // ★ 정상적인 꽉 찬 토큰이 전달됨
         },
     });
 
