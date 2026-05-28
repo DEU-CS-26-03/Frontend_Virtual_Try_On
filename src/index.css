@@ -15,3 +15,15 @@
         -moz-osx-font-smoothing: grayscale;
     }
 }
+
+@layer utilities {
+        /* 1. 사용자 닉네임 등에 쓰인 text-[10px]를 강제로 13px로 키웁니다 */
+        .text-\[10px\] {
+        font-size: 13px !important;
+    }
+
+        /* 2. 새 옷 등록 버튼 등에 쓰인 text-[11px]를 강제로 15px로 키웁니다 */
+        .text-\[11px\] {
+        font-size: 15px !important;
+    }
+}
