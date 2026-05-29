@@ -5,9 +5,11 @@ import { addFavorite, deleteFavorite, getFavorites } from "../../api/favoriteApi
 
 interface Props {
     garmentId: string;
+    isFavorite: boolean;   // 부모가 넘겨주는 하트 상태 (boolean)
+    onToggle: () => void;  // 부모가 넘겨주는 토글 함수 (리턴값이 없는 함수)
 }
 
-const FavoriteButton = ({ garmentId }: Props) => {
+const FavoriteButton = ({ garmentId, isFavorite, onToggle }: Props) => {
     const [liked, setLiked] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -76,7 +78,11 @@ const FavoriteButton = ({ garmentId }: Props) => {
 
     return (
         <button
-            onClick={handleToggle}
+            type="button"
+            onClick={(e) => {
+                e.preventDefault(); // 링크나 부모 카드 클릭 이벤트 방지
+                onToggle();        // 부모(Home.tsx)의 토글 함수 실행
+            }}
             disabled={loading}
             className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow hover:scale-105 transition"
             title={liked ? "즐겨찾기 해제" : "즐겨찾기 추가"}

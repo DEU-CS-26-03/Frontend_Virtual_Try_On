@@ -5,6 +5,7 @@ import { getGarments, deleteGarment, type GarmentItem } from "../api/garmentApi"
 import HomePage, { type HomeBanner, type HomeCategory, type HomeDisplayGarment } from "./HomePage";
 import UploadModal, { type UploadFormData } from "../components/upload/UploadModal";
 import CautionModal from "../components/upload/CautionModal";
+import { getFavorites, addFavorite, deleteFavorite } from "../api/favoriteApi";
 
 // Home.tsx 내부의 유저 타입 선언
 interface LocalUser {
@@ -19,33 +20,32 @@ interface LocalUser {
 }
 
 const BANNER_DATA: HomeBanner[] = [
-  { 
-    id: 1, 
-    tag: "SMART FITTING ROOM", 
-    title: "클릭 한 번으로 완성되는\n나만의 가상 드레스룸", 
-    sub: "원하는 옷을 고르고 즉시 피팅 결과를 실시간 피드에서 확인하세요.", 
-    img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600&auto=format&fit=crop" 
+  {
+    id: 1,
+    tag: "SMART FITTING ROOM",
+    title: "클릭 한 번으로 완성되는\n나만의 가상 드레스룸",
+    sub: "원하는 옷을 고르고 즉시 피팅 결과를 실시간 피드에서 확인하세요.",
+    img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600&auto=format&fit=crop"
   },
-  { 
-    id: 2, 
+  {
+    id: 2,
     tag: "AI VIRTUAL TRY-ON",
-    title: "상상하던 스타일,\n실시간 AI 가상 피팅으로 확인하세요", 
-    sub: "모델에게 옷을 입히듯 내 스타일을 즉시 가상 공간에서 확인하세요.", 
-    beforeImg: "/before.png",   
-    garmentImg: "/jacket.png",  
-    resultImg: "/after.png"     
+    title: "상상하던 스타일,\n실시간 AI 가상 피팅으로 확인하세요",
+    sub: "모델에게 옷을 입히듯 내 스타일을 즉시 가상 공간에서 확인하세요.",
+    beforeImg: "/before.png",
+    garmentImg: "/jacket.png",
+    resultImg: "/after.png"
   },
-  { 
-    id: 3, 
+  {
+    id: 3,
     tag: "STYLING GENERATOR",
-    title: "새로운 패션 트렌드를\n정교한 생성형 AI로 매칭", 
-    sub: "다양한 옷과 체형 데이터베이스를 기반으로 최상의 아웃핏을 도출합니다.", 
-    beforeImg: "/woman.png",   
-    garmentImg: "/pink_Tshirt.png",  
-    resultImg: "/woman_after.PNG"     
+    title: "새로운 패션 트렌드를\n정교한 생성형 AI로 매칭",
+    sub: "다양한 옷과 체형 데이터베이스를 기반으로 최상의 아웃핏을 도출합니다.",
+    beforeImg: "/woman.png",
+    garmentImg: "/pink_Tshirt.png",
+    resultImg: "/woman_after.PNG"
   }
 ];
-
 
 const normalizeFileUrl = (url?: string | null): string => {
   if (!url) return "";
@@ -69,46 +69,69 @@ const Home = () => {
   const [isNoticeOpen, setIsNoticeOpen] = useState(false);
   const [selectedGarment, setSelectedGarment] = useState<HomeDisplayGarment | null>(null);
 
-  // 💡 [추가] 배너의 현재 인덱스를 관리하는 State
+  // 💡 내가 찜한 상품들의 garmentId 목록을 저장할 State
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+
+  // 💡 배너의 현재 인덱스를 관리하는 State
   const [currentBanner, setCurrentBanner] = useState(0);
 
-  // 💡 [추가] 이전 배너로 이동하는 함수 (첫 페이지에서 누르면 마지막 페이지로)
   const handlePrevBanner = () => {
     setCurrentBanner((prev) => (prev === 0 ? BANNER_DATA.length - 1 : prev - 1));
   };
 
-  // 💡 [추가] 다음 배너로 이동하는 함수 (마지막 페이지에서 누르면 첫 페이지로)
+  // 💡 다음 배너로 이동하는 함수
   const handleNextBanner = useCallback(() => {
     setCurrentBanner((prev) => (prev === BANNER_DATA.length - 1 ? 0 : prev + 1));
-  }, []); // 빈 배열을 넣어 함수가 처음 한 번만 생성되도록 고정
+  }, []);
 
-  // 💡 [추가] 5초마다 배너를 자동으로 넘겨주는 효과
   useEffect(() => {
-    // 5000ms(5초)마다 handleNextBanner 실행
     const timer = setInterval(() => {
       handleNextBanner();
     }, 5000);
-
-    // 🔥 중요: 사용자가 버튼을 클릭해 배너가 바뀌거나 화면을 나갈 때 타이머 리셋
     return () => clearInterval(timer);
-  }, [handleNextBanner, currentBanner]); // 💡 currentBanner를 넣어 클릭 즉시 5초가 초기화되도록 세팅
+  }, [handleNextBanner, currentBanner]);
+
+  // 💡 찜 목록 ID만 배열로 추출하여 저장하는 함수
+  const loadFavoriteIds = useCallback(async () => {
+    try {
+      const favs = await getFavorites();
+      setFavoriteIds(favs.map(f => String(f.garmentId)));
+    } catch {
+      setFavoriteIds([]);
+    }
+  }, []);
+
+  // 💡 [추가] 찜하기 토글(등록/해제) 기능 구현
+  const handleToggleFavorite = useCallback(async (garmentId: string) => {
+    const isFav = favoriteIds.includes(String(garmentId));
+    try {
+      if (isFav) {
+        // 이미 찜 상태면 삭제 요청
+        await deleteFavorite(garmentId);
+        setFavoriteIds((prev) => prev.filter((id) => id !== String(garmentId)));
+      } else {
+        // 찜 상태가 아니면 등록 요청
+        await addFavorite(garmentId);
+        setFavoriteIds((prev) => [...prev, String(garmentId)]);
+      }
+    } catch (error) {
+      console.error("찜하기 처리 실패:", error);
+      alert("찜하기 변경에 실패했습니다. 로그인 상태를 확인해 주세요.");
+    }
+  }, [favoriteIds]);
 
   useEffect(() => {
-    const savedUser = sessionStorage.getItem("user"); 
-  
-    // 1. 데이터가 아예 안 들어왔는지 브라우저 콘솔(F12)에서 확인
+    const savedUser = sessionStorage.getItem("user");
     console.log("현재 sessionStorage 'user' 데이터:", savedUser);
 
     if (savedUser) {
       try {
         const user = JSON.parse(savedUser) as LocalUser;
-      
-        // 2. 가끔 객체 안에 user가 또 들어있는 경우가 있어 방어 코드 작성
         const rawRole = user.role || user.user?.role || "";
         const userRole = String(rawRole).trim().toUpperCase();
-      
+
         console.log("추출된 유저 권한(Role):", userRole);
-    
+
         if (userRole === "ADMIN" || userRole === "admin") {
           setIsAdmin(true);
         } else {
@@ -131,14 +154,18 @@ const Home = () => {
     } catch { setGarments([]); } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { void loadGarments(category); }, [category, loadGarments]);
+  // 💡 카테고리가 바뀌거나 홈에 진입할 때 상품 목록과 찜 리스트를 동시에 리로드하도록 정돈
+  useEffect(() => {
+    void loadGarments(category);
+    void loadFavoriteIds();
+  }, [category, loadGarments, loadFavoriteIds]);
 
   const handleDeleteGarment = async (id: string) => {
     if (!window.confirm("정말 이 의류를 삭제하시겠습니까?")) return;
     try {
       await deleteGarment(id);
       alert("삭제되었습니다.");
-      loadGarments(category); // 삭제 후 새로고침
+      await loadGarments(category);
     } catch { alert("삭제 권한이 없거나 서버 오류입니다."); }
   };
 
@@ -153,7 +180,7 @@ const Home = () => {
         price: formData.price,
         fileUrl: formData.fileUrl,
       });
-      loadGarments(category);
+      await loadGarments(category);
       setIsUploadModalOpen(false);
     } catch (error) {
       console.error("업로드 실패:", error);
@@ -163,20 +190,18 @@ const Home = () => {
     }
   };
 
-  // 💡 옷 클릭 시 실행되어 모달을 띄워주는 함수
   const handleFittingClickOpenNotice = (item: HomeDisplayGarment) => {
     setSelectedGarment(item);
     setIsNoticeOpen(true);
   };
 
-  // 💡 모달에서 최종 [확인] 클릭 시 실행될 함수
   const handleConfirmFitting = () => {
     if (selectedGarment) {
-      navigate("/fitting", { 
-        state: { 
-          cloth: selectedGarment.fileUrl, 
-          garmentId: selectedGarment.garmentId 
-        } 
+      navigate("/fitting", {
+        state: {
+          cloth: selectedGarment.fileUrl,
+          garmentId: selectedGarment.garmentId
+        }
       });
     }
     setIsNoticeOpen(false);
@@ -187,9 +212,9 @@ const Home = () => {
       <>
         <HomePage
             banners={BANNER_DATA}
-            currentBanner={currentBanner} // 💡 고정값 0 대신 State 전달
-            onPrevBanner={handlePrevBanner} // 💡 빈 함수 대신 구현된 함수 전달
-            onNextBanner={handleNextBanner} // 💡 빈 함수 대신 구현된 함수 전달
+            currentBanner={currentBanner}
+            onPrevBanner={handlePrevBanner}
+            onNextBanner={handleNextBanner}
             categories={["all", "top", "bottom", "outer", "dress"]}
             category={category}
             setCategory={setCategory}
@@ -199,23 +224,25 @@ const Home = () => {
               name: g.name || "이름 없음",
               category: g.category,
               fileUrl: normalizeFileUrl(g.fileUrl),
-              price: g.price?.toLocaleString() || "0"
+              price: g.price?.toLocaleString() || "0",
+              isFavorite: favoriteIds.includes(String(g.id))
             }))}
             loading={loading}
             uploading={uploading}
-            // ★ 중요: 바로 페이지 이동이 아니라 모달을 여는 함수를 바인딩합니다.
             handleFittingClick={handleFittingClickOpenNotice}
             isAdmin={isAdmin}
             onDelete={handleDeleteGarment}
+            // 💡 [추가] HomePage가 요구하는 즐겨찾기 토글 함수를 여기에 연결해 줍니다!
+            onToggleFavorite={handleToggleFavorite}
         />
         <UploadModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} onUpload={handleModalUpload} />
-        <CautionModal 
-          isOpen={isNoticeOpen} 
-          onClose={() => {
-            setIsNoticeOpen(false); 
-            setSelectedGarment(null);
-          }} 
-          onConfirm={handleConfirmFitting} 
+        <CautionModal
+            isOpen={isNoticeOpen}
+            onClose={() => {
+              setIsNoticeOpen(false);
+              setSelectedGarment(null);
+            }}
+            onConfirm={handleConfirmFitting}
         />
       </>
   );

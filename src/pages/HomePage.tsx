@@ -19,6 +19,7 @@ export interface HomeDisplayGarment {
     category: string;
     fileUrl: string;
     price: string;
+    isFavorite: boolean; // 추가
 }
 
 export type HomeCategory = "all" | "top" | "bottom" | "outer" | "dress";
@@ -33,6 +34,7 @@ interface HomePageProps {
     setCategory: (category: HomeCategory) => void;
     onOpenUploadModal: () => void; // ★ fileInputRef 대신 함수를 받음
     garments: HomeDisplayGarment[];
+    onToggleFavorite: (garmentId: string) => void; // 💡 인터페이스 추가
     loading: boolean;
     uploading: boolean;
     handleFittingClick: (item: HomeDisplayGarment) => void;
@@ -70,6 +72,7 @@ const HomePage = ({
                       setCategory,
                       onOpenUploadModal,
                       garments,
+                      onToggleFavorite, // 💡여기에 누락되었던 파라미터를 꼭 추가해 주세요!
                       loading,
                       uploading,
                       handleFittingClick,
@@ -238,10 +241,14 @@ const HomePage = ({
                             >
                                 <div className="relative aspect-[3/4] overflow-hidden bg-[#F9F9F9]">
                                     <div
-                                        className="absolute top-3 right-3 z-20"
-                                        onClick={(e) => { e.stopPropagation(); }}
+                                        className="absolute top-4 right-4 z-20"
+                                        onClick={(e) => e.stopPropagation()}
                                     >
-                                        <FavoriteButton garmentId={item.garmentId} />
+                                        <FavoriteButton
+                                            garmentId={item.garmentId}
+                                            isFavorite={item.isFavorite}
+                                            onToggle={() => onToggleFavorite(item.garmentId)}
+                                        />
                                     </div>
                                     <img
                                         src={item.fileUrl || FALLBACK_IMAGE}
