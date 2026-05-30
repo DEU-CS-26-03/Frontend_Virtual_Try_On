@@ -40,6 +40,7 @@ interface HomePageProps {
     handleFittingClick: (item: HomeDisplayGarment) => void;
     isAdmin: boolean;
     onDelete: (id: string) => void;
+    isLoggedIn: boolean; // 💡 추가: 로그인 여부를 전달받는 프롭
 }
 
 const CATEGORY_LABEL_MAP: Record<HomeCategory, string> = {
@@ -78,6 +79,7 @@ const HomePage = ({
                       handleFittingClick,
                       isAdmin,
                       onDelete,
+                      isLoggedIn, // 💡 추가: 프롭스 구조 분해 할당
                   }: HomePageProps) => {
     return (
         <div className="min-h-screen bg-gray-50">
@@ -242,12 +244,16 @@ const HomePage = ({
                             >
                                 <div className="relative aspect-[3/4] overflow-hidden bg-[#F9F9F9]">
                                     <div className="absolute top-4 right-4 z-20" onClick={(e) => e.stopPropagation()}>
-                                        <FavoriteButton
-                                            // 💡 3. 여기도 콘솔 확인 후 실제 있는 키값(예: item.id)으로 변경하세요.
-                                            garmentId={item.garmentId}
-                                            isFavorite={item.isFavorite}
-                                            onToggle={() => onToggleFavorite(item.garmentId)}
-                                        />
+                                        {/* 💡 수정됨: isLoggedIn이 true일 때만 하트 버튼 영역 렌더링 */}
+                                        {isLoggedIn && (
+                                            <div className="absolute top-4 right-4 z-20" onClick={(e) => e.stopPropagation()}>
+                                                <FavoriteButton
+                                                    garmentId={item.garmentId}
+                                                    isFavorite={item.isFavorite}
+                                                    onToggle={() => onToggleFavorite(item.garmentId)}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                     <img
                                         src={item.fileUrl || FALLBACK_IMAGE}

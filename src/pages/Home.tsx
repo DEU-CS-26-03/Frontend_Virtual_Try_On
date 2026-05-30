@@ -68,6 +68,7 @@ const Home = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isNoticeOpen, setIsNoticeOpen] = useState(false);
   const [selectedGarment, setSelectedGarment] = useState<HomeDisplayGarment | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // 💡 추가: 로그인 상태 관리 State
 
   // 💡 내가 찜한 상품들의 garmentId 목록을 저장할 State
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
@@ -136,6 +137,7 @@ const Home = () => {
     console.log("현재 sessionStorage 'user' 데이터:", savedUser);
 
     if (savedUser) {
+      setIsLoggedIn(true); // 💡 유저 정보가 있으면 로그인 상태를 true로 설정
       try {
         const user = JSON.parse(savedUser) as LocalUser;
         const rawRole = user.role || user.user?.role || "";
@@ -153,6 +155,7 @@ const Home = () => {
         setIsAdmin(false);
       }
     } else {
+      setIsLoggedIn(false); // 💡 유저 정보가 없으면 false
       setIsAdmin(false);
     }
   }, []);
@@ -245,6 +248,7 @@ const Home = () => {
             onDelete={handleDeleteGarment}
             // 💡 [추가] HomePage가 요구하는 즐겨찾기 토글 함수를 여기에 연결해 줍니다!
             onToggleFavorite={handleToggleFavorite}
+            isLoggedIn={isLoggedIn} // 💡 추가: HomePage로 로그인 상태 전달
         />
         <UploadModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} onUpload={handleModalUpload} />
         <CautionModal
