@@ -1,93 +1,35 @@
-// src/components/favorite/FavoriteButton.tsx
-import { useEffect, useState } from "react";
+import React from "react";
 import { Heart } from "lucide-react";
-import { addFavorite, deleteFavorite, getFavorites } from "../../api/favoriteApi";
 
 interface Props {
     garmentId: string;
-    isFavorite: boolean;   // 부모가 넘겨주는 하트 상태 (boolean)
-    onToggle: () => void;  // 부모가 넘겨주는 토글 함수 (리턴값이 없는 함수)
+    isFavorite: boolean;   // 부모가 내려주는 상태
+    onToggle: () => void;  // 부모가 내려주는 함수
 }
 
 const FavoriteButton = ({ garmentId, isFavorite, onToggle }: Props) => {
-    const [liked, setLiked] = useState(false);
-    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        let mounted = true;
-
-        const token = localStorage.getItem("accessToken");
-        if (!token) {
-            setLiked(false);
-            return;
-        }
-
-        const loadFavorites = async () => {
-            try {
-                const favorites = await getFavorites();
-                if (!mounted) return;
-                setLiked(favorites.some((item) => String(item.garmentId) === String(garmentId)));
-            } catch (error) {
-                console.error("favorites load error:", error);
-            }
-        };
-
-        void loadFavorites();
-
-        return () => {
-            mounted = false;
-        };
-    }, [garmentId]);
-
-    const handleToggle = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-
-        const token = localStorage.getItem("accessToken");
-        if (!token) {
-            alert("로그인 후 이용 가능합니다.");
-            return;
-        }
-
-        try {
-            setLoading(true);
-
-            if (liked) {
-                await deleteFavorite(garmentId);
-                setLiked(false);
-            } else {
-                await addFavorite(garmentId);
-                setLiked(true);
-            }
-        } catch (error) {
-            const status =
-                typeof error === "object" && error && "status" in error
-                    ? Number((error as { status?: number }).status)
-                    : undefined;
-
-            if (status === 401) {
-                alert("로그인 후 이용 가능합니다.");
-                return;
-            }
-
-            console.error("favorite toggle error:", error);
-            alert("즐겨찾기 처리에 실패했습니다.");
-        } finally {
-            setLoading(false);
-        }
+    // 버튼 클릭 시 실행될 함수
+    const handleClick = (e: React.MouseEvent) => {
+        e.preventDefault();   // 기본 동작(링크 이동 등) 방지
+        e.stopPropagation();  // 부모 요소(상품 카드)로 클릭 이벤트가 전파되어 상세페이지로 넘어가는 현상 방지
+        onToggle();           // Home.tsx에서 정의한 토글 로직 실행
     };
 
     return (
         <button
             type="button"
-            onClick={(e) => {
-                e.preventDefault(); // 링크나 부모 카드 클릭 이벤트 방지
-                onToggle();        // 부모(Home.tsx)의 토글 함수 실행
-            }}
-            disabled={loading}
-            className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow hover:scale-105 transition"
-            title={liked ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+            onClick={handleClick}
+            // HomePage에서 이미 absolute 위치를 잡고 있다면 여기서는 뺄 수 있지만,
+            // 기존 디자인 유지를 위해 class는 거의 그대로 두었습니다.
+            className="w-11 h-11 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow hover:scale-105 transition"
+            title={isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
-            <Heart size={20} className={liked ? "fill-red-500 text-red-500" : "text-gray-500"} />
+            <Heart
+                size={20}
+                // isFavorite이 true면 빨간색 꽉 찬 하트, false면 회색 빈 하트
+                className={isFavorite ? "fill-red-500 text-red-500" : "text-gray-400"}
+            />
         </button>
     );
 };

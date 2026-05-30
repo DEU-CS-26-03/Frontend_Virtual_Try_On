@@ -235,16 +235,15 @@ const HomePage = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12 pb-32">
                         {garments.map((item) => (
                             <div
+                                // 💡 2. 만약 콘솔 확인 결과 키값이 id라면 item.id로 변경하세요.
                                 key={item.garmentId}
                                 className="group cursor-pointer flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500"
                                 onClick={() => handleFittingClick(item)}
                             >
                                 <div className="relative aspect-[3/4] overflow-hidden bg-[#F9F9F9]">
-                                    <div
-                                        className="absolute top-4 right-4 z-20"
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
+                                    <div className="absolute top-4 right-4 z-20" onClick={(e) => e.stopPropagation()}>
                                         <FavoriteButton
+                                            // 💡 3. 여기도 콘솔 확인 후 실제 있는 키값(예: item.id)으로 변경하세요.
                                             garmentId={item.garmentId}
                                             isFavorite={item.isFavorite}
                                             onToggle={() => onToggleFavorite(item.garmentId)}

@@ -91,8 +91,14 @@ const Home = () => {
     return () => clearInterval(timer);
   }, [handleNextBanner, currentBanner]);
 
-  // 💡 찜 목록 ID만 배열로 추출하여 저장하는 함수
+// 💡 [수정됨] 찜 목록 ID 로드 (가드 클로즈 적용: 비로그인 유저 보호)
   const loadFavoriteIds = useCallback(async () => {
+    const savedUser = sessionStorage.getItem("user");
+    if (!savedUser) {
+      setFavoriteIds([]);
+      return; // 비로그인이면 API 자체를 호출하지 않음 (409 에러 원천 차단)
+    }
+
     try {
       const favs = await getFavorites();
       setFavoriteIds(favs.map(f => String(f.garmentId)));
@@ -101,24 +107,29 @@ const Home = () => {
     }
   }, []);
 
-  // 💡 [추가] 찜하기 토글(등록/해제) 기능 구현
+  // 💡 [수정됨] 찜하기 토글 (가드 클로즈 적용)
   const handleToggleFavorite = useCallback(async (garmentId: string) => {
+    const savedUser = sessionStorage.getItem("user");
+    if (!savedUser) {
+      alert("로그인 후 관심상품을 등록할 수 있습니다.");
+      navigate("/login");
+      return;
+    }
+
     const isFav = favoriteIds.includes(String(garmentId));
     try {
       if (isFav) {
-        // 이미 찜 상태면 삭제 요청
         await deleteFavorite(garmentId);
         setFavoriteIds((prev) => prev.filter((id) => id !== String(garmentId)));
       } else {
-        // 찜 상태가 아니면 등록 요청
         await addFavorite(garmentId);
         setFavoriteIds((prev) => [...prev, String(garmentId)]);
       }
     } catch (error) {
       console.error("찜하기 처리 실패:", error);
-      alert("찜하기 변경에 실패했습니다. 로그인 상태를 확인해 주세요.");
+      alert("찜하기 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
-  }, [favoriteIds]);
+  }, [favoriteIds, navigate]);
 
   useEffect(() => {
     const savedUser = sessionStorage.getItem("user");

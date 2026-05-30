@@ -28,7 +28,10 @@ function fromFavoriteWire(data: FavoriteWire): FavoriteItem {
 }
 
 export async function getFavorites(): Promise<FavoriteItem[]> {
-  const data = await apiRequest<FavoriteWire[]>(API_ROUTES.FAVORITES);
+  const data = await apiRequest<FavoriteWire[]>(API_ROUTES.FAVORITES, {
+    method: "GET",  // 💡 [추가] HTTP 메서드 표기
+    withAuth: true, // 💡 [추가] 로그인된 사용자의 토큰을 함께 보내기
+  });
   return data.map(fromFavoriteWire);
 }
 
