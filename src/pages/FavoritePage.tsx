@@ -2,17 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trash2, ShoppingBag, Heart } from "lucide-react";
 import { getFavorites, deleteFavorite, type FavoriteItem } from "../api/favoriteApi";
-
-interface FavoriteBackendResponse {
-    garment_id: string;
-    status: string;
-    source_type: string;
-    category: string;
-    filename: string;
-    file_url: string;
-    brand_key: string;
-    favorited_at: string;
-}
+import { getGarments } from "../api/garmentApi"; // 💡 1. 진짜 이름을 가져오기 위해 의류 API 임포트
 
 export const FavoritePage = () => {
     const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
@@ -27,21 +17,32 @@ export const FavoritePage = () => {
             try {
                 setLoading(true);
 
-                const rawData = (await getFavorites()) as unknown as FavoriteBackendResponse[];
+                // ⚡ 2. [핵심] 찜 목록과 전체 의류 데이터를 병렬(Promise.all)로 동시에 가져옵니다.
+                const [favData, allGarments] = await Promise.all([
+                    getFavorites(),
+                    getGarments("all")
+                ]);
 
-                const mappedData: FavoriteItem[] = rawData.map((item: FavoriteBackendResponse) => ({
-                    id: item.garment_id,
-                    garmentId: item.garment_id,
-                    garmentImageUrl: item.file_url,
-                    garmentCategory: item.category,
-                }));
+                // ⚡ 3. 찜한 상품의 garmentId와 전체 의류 데이터의 id를 비교해서 진짜 이름을 매칭합니다.
+                const mergedData = favData.map((favItem) => {
+                    // 전체 의류 중 내가 찜한 의류와 ID가 같은 녀석을 찾습니다.
+                    const realGarment = allGarments.find(
+                        (g) => String(g.id) === String(favItem.garmentId)
+                    );
+
+                    return {
+                        ...favItem,
+                        // 찾았다면 업로드할 때 썼던 진짜 이름(예: '테스트 드레스')을 쓰고, 없으면 폴백 이름을 씁니다.
+                        garmentName: realGarment?.name || favItem.garmentName || "이름 없는 상품"
+                    };
+                });
 
                 if (isMounted) {
-                    setFavorites(mappedData);
+                    setFavorites(mergedData); // 덮어씌운 완벽한 데이터를 상태에 저장!
                 }
 
             } catch (err) {
-                console.error("관심상품 로드 실패:", err);
+                console.error("관심상품 로드 및 매칭 실패:", err);
             } finally {
                 if (isMounted) setLoading(false);
             }
@@ -61,7 +62,6 @@ export const FavoritePage = () => {
 
         try {
             await deleteFavorite(garmentId);
-            // 삭제 성공 시 로컬 상태 업데이트 (api에 맞게 garmentId로 필터링)
             setFavorites((prev) => prev.filter((item) => String(item.garmentId) !== String(garmentId)));
         } catch (err) {
             console.error("삭제 에러:", err);
@@ -73,7 +73,7 @@ export const FavoritePage = () => {
     const handleFittingClick = (item: FavoriteItem) => {
         navigate("/fitting", {
             state: {
-                cloth: item.garmentImageUrl, // API 인터페이스에 맞춤
+                cloth: item.garmentImageUrl,
                 garmentId: item.garmentId,
             },
         });
@@ -134,13 +134,19 @@ export const FavoritePage = () => {
                                 )}
                             </div>
 
-                            <div className="p-5 flex justify-between items-center bg-white z-20 relative">
-                                <span className="text-[10px] font-black text-[#2563EB] tracking-widest uppercase">
-                                    {item.garmentCategory || "ITEM"}
-                                </span>
+                            {/* 카테고리 및 조인된 진짜 의상 이름 출력 구역 */}
+                            <div className="p-5 flex justify-between items-start bg-white z-20 relative">
+                                <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                    <span className="text-[10px] font-black text-[#2563EB] tracking-widest uppercase">
+                                        {item.garmentCategory || "ITEM"}
+                                    </span>
+                                    <h3 className="font-bold text-sm text-[#111111] truncate pr-2" title={item.garmentName}>
+                                        {item.garmentName}
+                                    </h3>
+                                </div>
                                 <button
                                     onClick={(e) => handleDelete(e, item.garmentId)}
-                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all shrink-0"
                                     title="목록에서 삭제"
                                 >
                                     <Trash2 size={16} strokeWidth={2.5} />
