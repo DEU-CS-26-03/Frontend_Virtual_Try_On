@@ -3,6 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { Trash2, ShoppingBag, Heart } from "lucide-react";
 import { getFavorites, deleteFavorite, type FavoriteItem } from "../api/favoriteApi";
 
+interface FavoriteBackendResponse {
+    garment_id: string;
+    status: string;
+    source_type: string;
+    category: string;
+    filename: string;
+    file_url: string;
+    brand_key: string;
+    favorited_at: string;
+}
+
 export const FavoritePage = () => {
     const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -15,10 +26,20 @@ export const FavoritePage = () => {
         const fetchFavorites = async () => {
             try {
                 setLoading(true);
-                const data = await getFavorites();
+
+                const rawData = (await getFavorites()) as unknown as FavoriteBackendResponse[];
+
+                const mappedData: FavoriteItem[] = rawData.map((item: FavoriteBackendResponse) => ({
+                    id: item.garment_id,
+                    garmentId: item.garment_id,
+                    garmentImageUrl: item.file_url,
+                    garmentCategory: item.category,
+                }));
+
                 if (isMounted) {
-                    setFavorites(data);
+                    setFavorites(mappedData);
                 }
+
             } catch (err) {
                 console.error("관심상품 로드 실패:", err);
             } finally {
@@ -85,9 +106,9 @@ export const FavoritePage = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                    {favorites.map((item) => (
+                    {favorites.map((item, index) => (
                         <div
-                            key={item.id || item.garmentId}
+                            key={item.garmentId || item.id || index}
                             onClick={() => handleFittingClick(item)}
                             className="group cursor-pointer flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300"
                         >
