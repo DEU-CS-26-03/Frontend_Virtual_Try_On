@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Star, Download, RotateCcw, Camera, CheckCircle2, AlertCircle, Loader2, ArrowRight, Plus } from "lucide-react";
+import { Star, Download, RotateCcw, Camera, CheckCircle2, Loader2, Plus } from "lucide-react";
 import Header from "../components/layout/Header";
 import { getTryonStatus } from "../api/tryonApi";
 import type { ClothCategory, TryonStatus } from "../api/tryonApi";
+import { getGarments } from "../api/garmentApi";
 
 type ResultPageState = {
   tryonId?: string;
@@ -94,6 +95,25 @@ const getHistoryStorageKey = (): string => {
     }
   }
   return "fittingHistory_guest";
+};
+
+// 💡 [추가] 백엔드 인증 토큰을 세션/로컬 스토리지에서 안전하게 꺼내오는 함수
+const getValidToken = (): string => {
+  const userRaw = sessionStorage.getItem("user");
+  const accessTokenRaw = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
+  const tokenRaw = sessionStorage.getItem("token") || localStorage.getItem("token");
+
+  if (accessTokenRaw) return accessTokenRaw;
+  if (tokenRaw) return tokenRaw;
+  if (userRaw) {
+    try {
+      const parsed = JSON.parse(userRaw);
+      return (parsed.accessToken || parsed.token || "") as string;
+    } catch {
+      return "";
+    }
+  }
+  return "";
 };
 
 const ResultPage = () => {
@@ -226,17 +246,43 @@ const ResultPage = () => {
     return () => { active = false; clearPolling(); };
   }, [tryonId, navigate, clothType, finalUserImage, garmentCategory, clothPreview]);
 
-  const handleRatingSubmit = (selectedRating: number) => {
+// 💡 실제 데이터베이스 API(getGarments)를 활용한 추천 로직
+  const handleRatingSubmit = async (selectedRating: number) => {
     setRating(selectedRating);
     setShowRec(true);
+    setIsRecLoading(true);
 
+    // 1. 카테고리 판별
     let targetCategory = garmentCategory || clothType || "top";
     if (targetCategory === "upper") targetCategory = "top";
     if (targetCategory === "lower") targetCategory = "bottom";
     if (targetCategory === "overall") targetCategory = "dress";
     setCurrentCategoryLabel(getCategoryDisplayName(targetCategory));
 
-    setRecommendedItems([]);
+    try {
+      // 2. 만들어두신 getGarments 함수로 해당 카테고리의 실제 DB 데이터 가져오기
+      const dbItems = await getGarments(targetCategory);
+
+      // 3. 현재 피팅한 옷(tryonId)을 제외하고 상위 4개 추출 후 RecommendItem 맵핑
+      const filtered = dbItems
+          .filter((item) => item.id !== tryonId)
+          .slice(0, 4)
+          .map((item) => ({
+            id: item.id,
+            brandName: item.brandName || "BRAND",
+            category: item.category,
+            name: item.name || "추천 의상",
+            fileUrl: item.fileUrl,
+          }));
+
+      setRecommendedItems(filtered);
+
+    } catch (error) {
+      console.error("추천 상품 로드 에러:", error);
+      setRecommendedItems([]); // 실패 시 안전하게 빈 배열 처리
+    } finally {
+      setIsRecLoading(false);
+    }
   };
 
   const handleRecommendClick = (item: RecommendItem) => {
@@ -355,9 +401,34 @@ const ResultPage = () => {
                         </div>
                       </div>
 
+                      {/* ✨ [수정 완료] 불러온 recommendedItems 리스트를 카드로 매핑하여 그리는 UI 추가 */}
                       {isRecLoading ? (
                           <div className="flex justify-center items-center py-20">
                             <Loader2 className="animate-spin text-[#34D399]" size={40} />
+                          </div>
+                      ) : recommendedItems.length > 0 ? (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+                            {recommendedItems.map((item) => (
+                                <div
+                                    key={item.id}
+                                    onClick={() => handleRecommendClick(item)}
+                                    className="group bg-white/5 rounded-2xl p-4 border border-white/10 hover:border-[#34D399] transition-all cursor-pointer flex flex-col"
+                                >
+                                  {/* 옷 이미지 컨테이너 */}
+                                  <div className="aspect-[3/4] rounded-xl overflow-hidden bg-white flex items-center justify-center p-4 relative mb-4">
+                                    <img
+                                        src={normalizeFileUrl(item.fileUrl)}
+                                        className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                                        alt={item.name}
+                                    />
+                                  </div>
+                                  {/* 브랜드 및 상풍명 */}
+                                  <div className="mt-auto text-left">
+                                    <p className="text-[10px] font-black text-[#34D399] tracking-widest uppercase">{item.brandName}</p>
+                                    <h4 className="text-sm font-bold text-white mt-1 truncate">{item.name}</h4>
+                                  </div>
+                                </div>
+                            ))}
                           </div>
                       ) : (
                           <div className="text-center py-10 text-gray-400 font-bold">
