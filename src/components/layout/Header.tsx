@@ -56,27 +56,8 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // [핵심 해결 1]: 중첩된 user 객체까지 완벽하게 파싱하는 헬퍼 함수 추가
-  const getRealUserFromStorage = (): HeaderUserInfo | null => {
-    const savedUserStr = sessionStorage.getItem("user");
-    if (!savedUserStr) return null;
-    try {
-      const parsed = JSON.parse(savedUserStr);
-      if (parsed.user && parsed.user.nickname) {
-        return parsed.user;
-      }
-      return parsed as HeaderUserInfo;
-    } catch {
-      return null;
-    }
-  };
-
-  // [핵심 해결 2]: 1순위로 세션 스토리지의 진짜 닉네임을, 2순위로 토큰을 찾습니다.
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!sessionStorage.getItem("accessToken"));
   const [userInfo, setUserInfo] = useState<HeaderUserInfo | null>(() => {
-    const realUser = getRealUserFromStorage();
-    if (realUser?.nickname) return realUser; // 진짜 닉네임이 있으면 무조건 우선 사용!
-
     const token = sessionStorage.getItem("accessToken");
     return token ? parseJwtUser(token) : null;
   });
@@ -86,16 +67,8 @@ const Header = () => {
       await Promise.resolve();
 
       const token = sessionStorage.getItem("accessToken");
-      const realUser = getRealUserFromStorage(); // 진짜 유저 정보 가져오기
+      const savedUser = sessionStorage.getItem("user");
 
-      // 1순위: 진짜 닉네임이 담긴 세션 스토리지가 있다면 이것을 최우선으로 사용
-      if (token && realUser?.nickname) {
-        setIsLoggedIn(true);
-        setUserInfo(realUser);
-        return;
-      }
-
-      // 2순위: 세션 스토리지가 날아갔다면 토큰이라도 뜯어서 복구
       if (token) {
         const parsedInfo = parseJwtUser(token);
         if (parsedInfo) {
@@ -105,8 +78,18 @@ const Header = () => {
         }
       }
 
-      setIsLoggedIn(false);
-      setUserInfo(null);
+      if (token && savedUser) {
+        setIsLoggedIn(true);
+        try {
+          setUserInfo(JSON.parse(savedUser) as HeaderUserInfo);
+        } catch (error) {
+          console.error("헤더 유저 정보 파싱 에러:", error);
+          setUserInfo(null);
+        }
+      } else {
+        setIsLoggedIn(false);
+        setUserInfo(null);
+      }
     };
 
     void syncAuthState();
@@ -128,6 +111,7 @@ const Header = () => {
     window.location.reload();
   };
 
+  // 💡 [추가된 로직]: 권한(Role)을 확인하여 관리자 여부 판단
   const isAdmin = userInfo?.role?.toUpperCase().includes("ADMIN");
 
   return (
@@ -147,6 +131,7 @@ const Header = () => {
 
           <div className="flex items-center gap-7 text-[#111111]">
 
+            {/* 💡 [수정된 부분]: 관리자면 "관리자", 일반 유저면 "닉네임님" 출력 */}
             {isLoggedIn && (
                 <span className={`text-sm font-bold bg-white px-4 py-1.5 rounded-full border shadow-sm ${isAdmin ? 'text-[#2563EB] border-blue-200' : 'text-[#111111] border-gray-200'}`}>
                   {isAdmin ? "관리자" : `${userInfo?.nickname || "사용자"}님`}
