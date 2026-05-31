@@ -56,7 +56,6 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 💡 [해결 2]: 초기 상태값을 함수형으로 지정하여, 화면이 처음 켜질 때부터 올바른 값을 가지게 합니다.
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!sessionStorage.getItem("accessToken"));
   const [userInfo, setUserInfo] = useState<HeaderUserInfo | null>(() => {
     const token = sessionStorage.getItem("accessToken");
@@ -64,15 +63,13 @@ const Header = () => {
   });
 
   useEffect(() => {
-    // 💡 [해결 1 & 2]: 비동기(async) 함수로 감싸서 동기적 setState 경고(cascading renders)를 완벽히 우회합니다.
     const syncAuthState = async () => {
-      await Promise.resolve(); // 마이크로태스크 큐로 넘겨서 React가 렌더링을 끝낼 시간을 벌어줍니다.
+      await Promise.resolve();
 
       const token = sessionStorage.getItem("accessToken");
       const savedUser = sessionStorage.getItem("user");
 
       if (token) {
-        // 💡 [미사용 에러 해결!]: 만들어둔 parseJwtUser 함수를 여기서 드디어 사용합니다.
         const parsedInfo = parseJwtUser(token);
         if (parsedInfo) {
           setIsLoggedIn(true);
@@ -81,7 +78,6 @@ const Header = () => {
         }
       }
 
-      // 토큰 파싱에 실패했을 때만 기존의 savedUser 문자열을 꺼내 쓰는 폴백(Fallback) 로직
       if (token && savedUser) {
         setIsLoggedIn(true);
         try {
@@ -115,6 +111,9 @@ const Header = () => {
     window.location.reload();
   };
 
+  // 💡 [추가된 로직]: 권한(Role)을 확인하여 관리자 여부 판단
+  const isAdmin = userInfo?.role?.toUpperCase().includes("ADMIN");
+
   return (
       <header className="w-full bg-[#F5F5F3] sticky top-0 z-[100] shadow-md border-b border-gray-200 transition-all">
         <div className="max-w-[1600px] mx-auto px-10 h-24 flex items-center justify-between">
@@ -132,10 +131,11 @@ const Header = () => {
 
           <div className="flex items-center gap-7 text-[#111111]">
 
+            {/* 💡 [수정된 부분]: 관리자면 "관리자", 일반 유저면 "닉네임님" 출력 */}
             {isLoggedIn && (
-                <span className="text-[10px] font-bold text-[#111111] bg-white px-3 py-1 rounded-full border border-gray-200">
-              {userInfo?.nickname || "정상 로그인됨"}님
-            </span>
+                <span className={`text-sm font-bold bg-white px-4 py-1.5 rounded-full border shadow-sm ${isAdmin ? 'text-[#2563EB] border-blue-200' : 'text-[#111111] border-gray-200'}`}>
+                  {isAdmin ? "관리자" : `${userInfo?.nickname || "사용자"}님`}
+                </span>
             )}
 
             <button
