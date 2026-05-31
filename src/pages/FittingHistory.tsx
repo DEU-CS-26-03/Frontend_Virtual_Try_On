@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, Trash2, ExternalLink, Image as ImageIcon, Loader2, AlertCircle } from "lucide-react";
+import { Clock, Trash2, ExternalLink, Image as ImageIcon, Loader2, AlertCircle, Plus } from "lucide-react";
 
+// ✨ 1. 옷 이미지를 꺼내오기 위해 clothImageUrl 속성 추가
 interface FittingHistoryItem {
     id: string;
     originalImageUrl: string;
+    clothImageUrl: string;
     resultImageUrl: string;
     category: string;
     createdAt: string;
@@ -33,7 +35,6 @@ export const FittingHistory = () => {
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    // 💡 여기에 똑같이 추가하세요!
     const getHistoryStorageKey = (): string => {
         const userRaw = sessionStorage.getItem("user");
         if (userRaw) {
@@ -53,7 +54,6 @@ export const FittingHistory = () => {
         setErrorMsg(null);
 
         try {
-            // ✨ 내 고유 Key로 저장된 데이터만 쏙 빼옵니다.
             const storageKey = getHistoryStorageKey();
             const localDataRaw = localStorage.getItem(storageKey);
             const localData: FittingHistoryItem[] = localDataRaw ? JSON.parse(localDataRaw) : [];
@@ -62,9 +62,11 @@ export const FittingHistory = () => {
                 console.warn("로컬 스토리지에 저장된 내역이 없습니다.");
                 setHistory([]);
             } else {
+                // ✨ 2. 저장된 데이터에서 clothImageUrl(아이템), originalImageUrl(모델) 맵핑
                 setHistory(localData.map((item: FittingHistoryItem) => ({
                     id: item.id,
                     originalImageUrl: item.originalImageUrl,
+                    clothImageUrl: item.clothImageUrl || "https://images.unsplash.com/photo-1540221652346-e5dd6b50f3e7?w=500",
                     resultImageUrl: item.resultImageUrl,
                     category: item.category,
                     createdAt: formatDate(item.createdAt)
@@ -86,7 +88,6 @@ export const FittingHistory = () => {
         if (!confirm("이 피팅 기록을 정말 삭제하시겠습니까?")) return;
 
         try {
-            // 💡 내 고유 Key를 이용해 내 데이터베이스에서만 삭제
             const storageKey = getHistoryStorageKey();
             const existingRaw = localStorage.getItem(storageKey);
             const existingHistory: FittingHistoryItem[] = existingRaw ? JSON.parse(existingRaw) : [];
@@ -95,7 +96,6 @@ export const FittingHistory = () => {
             localStorage.setItem(storageKey, JSON.stringify(updatedHistory));
 
             setHistory(prev => prev.filter(item => item.id !== resultId));
-            alert("결과가 브라우저에서 성공적으로 삭제되었습니다.");
 
         } catch (error) {
             console.error("삭제 중 에러:", error);
@@ -107,12 +107,13 @@ export const FittingHistory = () => {
         if (!url || url.trim() === "") {
             return "https://images.unsplash.com/photo-1540221652346-e5dd6b50f3e7?w=500";
         }
-        if (url.startsWith("http") || url.startsWith("data:")) return url;
+        if (url.startsWith("http") || url.startsWith("data:") || url.startsWith("blob:")) return url;
 
         const cleanUrl = url.startsWith("/") ? url : `/${url}`;
         return `https://apivirtualtryon.p-e.kr${cleanUrl}`;
     };
 
+    // 💡 완벽하게 밝은 테마로 복구된 로딩 화면
     if (loading) return (
         <div className="flex flex-col items-center justify-center py-32 space-y-4">
             <Loader2 className="animate-spin text-blue-600" size={48} />
@@ -120,6 +121,7 @@ export const FittingHistory = () => {
         </div>
     );
 
+    // 💡 완벽하게 밝은 테마로 복구된 에러 화면
     if (errorMsg) return (
         <div className="flex flex-col items-center justify-center py-24 text-center">
             <AlertCircle className="text-red-500 mb-4" size={48} />
@@ -132,7 +134,8 @@ export const FittingHistory = () => {
     );
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500 text-[#111111]">
+            {/* 헤더 영역 */}
             <div className="flex items-center gap-3">
                 <Clock className="text-blue-600" size={24} />
                 <h3 className="text-2xl font-[1000] uppercase tracking-tighter">Fitting History</h3>
@@ -141,21 +144,41 @@ export const FittingHistory = () => {
                 </span>
             </div>
 
+            {/* 3단 비교 리스트 영역 (밝은 테마 버전) */}
             {history.length > 0 ? (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                     {history.map((item) => (
                         <div key={item.id} className="group bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-500">
-                            <div className="flex aspect-[4/3] bg-gray-50 relative overflow-hidden">
-                                <div className="w-1/2 relative group-hover:scale-102 transition-transform duration-500">
-                                    <img src={validateImgSrc(item.originalImageUrl)} className="w-full h-full object-cover" alt="Source" />
-                                    <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md text-[8px] text-white px-2.5 py-1 rounded-full font-black">THUMBNAIL</div>
+
+                            <div className="flex flex-col sm:flex-row items-center justify-between p-6 gap-6 bg-gray-50/50 border-b border-gray-100">
+
+                                {/* A. 좌측 영역: 입력 소스 (MODEL & ITEM) */}
+                                <div className="flex flex-col gap-3 w-full sm:w-[140px] shrink-0">
+                                    <div className="relative aspect-[4/5] bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200">
+                                        <img src={validateImgSrc(item.originalImageUrl)} className="w-full h-full object-cover" alt="Model" />
+                                        <div className="absolute bottom-2 left-2 bg-black/70 text-[8px] text-white px-2 py-0.5 rounded-md font-black uppercase">MODEL</div>
+                                    </div>
+                                    <div className="relative aspect-[4/5] bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 p-1">
+                                        <img src={validateImgSrc(item.clothImageUrl)} className="w-full h-full object-contain" alt="Item" />
+                                        <div className="absolute bottom-2 left-2 bg-black/70 text-[8px] text-white px-2 py-0.5 rounded-md font-black uppercase">ITEM</div>
+                                    </div>
                                 </div>
-                                <div className="w-1/2 relative border-l-2 border-white group-hover:scale-102 transition-transform duration-500">
-                                    <img src={validateImgSrc(item.resultImageUrl)} className="w-full h-full object-cover" alt="Result" />
-                                    <div className="absolute top-4 left-4 bg-blue-600/80 backdrop-blur-md text-[8px] text-white px-2.5 py-1 rounded-full font-black shadow-lg">FITTED</div>
+
+                                {/* B. 중앙 영역: 플러스 기호 */}
+                                <div className="text-gray-300 font-light text-2xl select-none hidden sm:block">+</div>
+
+                                {/* C. 우측 영역: 완성작 (TRY-ON RESULT) */}
+                                <div className="w-full sm:flex-1 max-w-[260px]">
+                                    <div className="relative aspect-[3/4] bg-white rounded-[1.8rem] overflow-hidden shadow-md border-2 border-[#34D399]">
+                                        <img src={validateImgSrc(item.resultImageUrl)} className="w-full h-full object-contain bg-white" alt="Result" />
+                                        <div className="absolute bottom-3 left-3 bg-[#34D399] text-black px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                                            TRY-ON RESULT
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
+                            {/* 하단 정보 및 버튼 영역 */}
                             <div className="p-6 flex justify-between items-center bg-white">
                                 <div>
                                     <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">{item.category}</span>
@@ -163,7 +186,7 @@ export const FittingHistory = () => {
                                 </div>
                                 <div className="flex gap-2">
                                     <button
-                                        onClick={() => navigate(`/result`, { state: { tryonId: item.id } })}
+                                        onClick={() => navigate(`/result`, { state: { tryonId: item.id, clothPreview: item.clothImageUrl, userPreview: item.originalImageUrl } })}
                                         className="p-3 bg-gray-50 text-gray-500 rounded-xl hover:bg-black hover:text-white transition-all"
                                     >
                                         <ExternalLink size={18} />
@@ -176,6 +199,7 @@ export const FittingHistory = () => {
                                     </button>
                                 </div>
                             </div>
+
                         </div>
                     ))}
                 </div>

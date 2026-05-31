@@ -35,54 +35,76 @@ const FittingPage = () => {
         return () => { if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl); };
     }, [userPreviewUrl]);
 
+    // ✨ [추가] 고화질 이미지를 로컬 스토리지용 초경량(수십 KB)으로 압축하는 함수
+    const compressImage = (targetFile: File): Promise<string> => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(targetFile);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    const MAX_WIDTH = 500; // 가로 해상도를 500px로 최적화 (비교 화면용으로 충분)
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext("2d");
+                    ctx?.drawImage(img, 0, 0, width, height);
+
+                    // 압축률 0.7의 JPEG 포맷 문자열로 반환 (용량이 50KB 내외로 줄어듦)
+                    const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+                    resolve(compressedBase64);
+                };
+            };
+        });
+    };
+
     const handleNext = async () => {
         if (!file || !cloth) {
-            alert("내 사진과 의상을 모두 준비해주세요.");
+            alert("사진과 의상을 모두 준비해주세요.");
             return;
         }
-
         try {
             setIsLoading(true);
 
-            // 1. 의류 이미지 다운로드
+            // 1. 의류 이미지 다운로드 및 가공
             const backendBaseUrl = "https://apivirtualtryon.p-e.kr";
             const targetClothUrl = cloth.startsWith("http") ? cloth : backendBaseUrl + cloth;
-
             const response = await fetch(targetClothUrl);
-            if (!response.ok) throw new Error("옷 이미지를 불러올 수 없습니다.");
-
             const blob = await response.blob();
             const clothFile = new File([blob], "cloth.jpg", { type: "image/jpeg" });
 
-            // 2. 피팅 작업 요청 (사용자가 선택한 카테고리 전송)
+            // 2. 백엔드 가상 피팅 API 요청 보내기
             const job = await createTryonJob({
                 personImage: file,
                 clothImage: clothFile,
-                clothType: selectedCategory, // ★ 수정됨: selectedCategory 사용
+                clothType: selectedCategory,
             });
 
-            // 3. 세션 저장
-            if (!sessionStorage.getItem("accessToken")) {
-                const guestIds = JSON.parse(sessionStorage.getItem("guestTryonIds") || "[]");
-                sessionStorage.setItem("guestTryonIds", JSON.stringify([...guestIds, job.tryonId]));
-            }
+            // 3. 비동기 레이스 컨디션 및 로컬 용량 에러를 막기 위해 이미지 압축을 먼저 완료(await) 시킵니다.
+            const compressedUserImage = await compressImage(file);
 
-            if (!job || !job.tryonId) {
-                throw new Error("Job ID가 생성되지 않았습니다.");
-            }
-
-            // 4. 결과 페이지로 이동
+            // 4. 모든 데이터가 완벽히 준비된 후 안전하게 결과 페이지로 이동
             navigate("/result", {
                 state: {
                     tryonId: job.tryonId,
-                    userPreview: userPreviewUrl,
-                    clothType: selectedCategory // ★ 선택한 타입을 결과 페이지로 넘김
+                    userPreview: compressedUserImage, // ✨ 용량이 획기적으로 줄어든 영구 저장용 주소
+                    clothType: selectedCategory,
+                    clothPreview: cloth
                 }
             });
 
         } catch (error) {
-            console.error("피팅 요청 실패:", error);
-            alert("가상 피팅 서버와 통신에 실패했습니다.");
+            console.error("서버 통신 오류:", error);
+            alert("서버 통신에 실패했습니다.");
         } finally {
             setIsLoading(false);
         }

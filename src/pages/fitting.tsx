@@ -50,7 +50,7 @@ const Fitting = () => {
       });
 
       navigate("/result", {
-        state: { tryonId: job.tryonId, userPreview: userPreviewUrl, clothType: selectedCategory }
+        state: { tryonId: job.tryonId, userPreview: userPreviewUrl, clothType: selectedCategory, clothPreview: cloth }
       });
     } catch (error) {
       // ★ 에러 해결: error 변수 미사용 경고 방지를 위해 콘솔에 출력
