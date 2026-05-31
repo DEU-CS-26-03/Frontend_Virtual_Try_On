@@ -125,7 +125,7 @@ export const FixUser = ({ user }: FixUserProps) => {
                 method: "PATCH",
                 withAuth: true,
                 body: JSON.stringify({
-                    oldPassword: currentPassword,
+                    currentPassword: currentPassword, // ★ oldPassword -> currentPassword 로 변경
                     newPassword: newPassword,
                 }),
             });
@@ -134,7 +134,12 @@ export const FixUser = ({ user }: FixUserProps) => {
             setCurrentPassword("");
             setNewPassword("");
         } catch (error: unknown) {
-            alert(getErrorMessage(error));
+            const errMsg = getErrorMessage(error);
+            if (errMsg.includes("인증") || errMsg.includes("Unauthorized")) {
+                alert("기존 비밀번호가 일치하지 않거나 로그인이 만료되었습니다.");
+            } else {
+                alert(errMsg);
+            }
         } finally {
             setSubmittingPassword(false);
         }
