@@ -53,6 +53,7 @@ interface TryonResponsePayload {
   resultimageurl?: string;
   resultImageUrl?: string;
   result_image_url?: string;
+  result_url?: string; // 💡 백엔드 결과 매핑 방어용
   message?: string;
   error?: TryonError;
   createdat?: string;
@@ -74,6 +75,7 @@ export async function createTryon(params: CreateTryonParams): Promise<TryonJob> 
     method: "POST",
     body: formData,
     isFormData: true,
+    withAuth: true, // ✨ 핵심 해결: 이제 이 요청에 로그인 토큰이 실려서 날아갑니다!
   });
 
   return fromTryonWire(data);
@@ -83,7 +85,7 @@ function normalizeStatus(status?: string): TryonStatus {
   const value = String(status || "").toLowerCase();
   if (value === "queued") return "queued";
   if (value === "processing") return "processing";
-  if (value === "completed") return "completed";
+  if (value === "completed" || value === "success") return "completed";
   if (value === "failed") return "failed";
   return "queued";
 }
@@ -99,7 +101,8 @@ function fromTryonWire(payload: TryonResponsePayload): TryonJob {
     userImageId: data?.userimageid ?? data?.userImageId ?? data?.user_image_id,
     garmentId: data?.garmentid ?? data?.garmentId ?? data?.garment_id,
     resultId: data?.resultid ?? data?.resultId ?? data?.result_id,
-    resultImageUrl: data?.resultimageurl ?? data?.resultImageUrl ?? data?.result_image_url,
+    // 💡 다양한 이미지 URL 변수명 방어
+    resultImageUrl: data?.resultimageurl ?? data?.resultImageUrl ?? data?.result_image_url ?? data?.result_url,
     message: data?.message,
     error: data?.error,
     createdAt: data?.createdat ?? data?.createdAt ?? data?.created_at,
@@ -108,18 +111,23 @@ function fromTryonWire(payload: TryonResponsePayload): TryonJob {
 }
 
 export async function getTryon(tryonId: string): Promise<TryonJob> {
-  const data = await apiRequest<TryonResponsePayload>(`${API_ROUTES.TRYONS}/${tryonId}`);
+  const data = await apiRequest<TryonResponsePayload>(`${API_ROUTES.TRYONS}/${tryonId}`, {
+    withAuth: true, // ✨ 상태 조회 시에도 내 권한 증명
+  });
   return fromTryonWire(data);
 }
 
 export async function getTryonList(): Promise<TryonJob[]> {
-  const data = await apiRequest<TryonResponsePayload[]>(API_ROUTES.TRYONS);
+  const data = await apiRequest<TryonResponsePayload[]>(API_ROUTES.TRYONS, {
+    withAuth: true, // ✨ 목록 조회 시에도 내 권한 증명
+  });
   return (data || []).map(fromTryonWire);
 }
 
 export async function deleteTryon(tryonId: string): Promise<void> {
   await apiRequest<void>(`${API_ROUTES.TRYONS}/${tryonId}`, {
     method: "DELETE",
+    withAuth: true, // ✨ 삭제 시에도 내 권한 증명
   });
 }
 

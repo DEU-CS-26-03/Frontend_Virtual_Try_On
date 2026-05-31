@@ -3,17 +3,16 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Star, Download, RotateCcw, Camera, CheckCircle2, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import Header from "../components/layout/Header";
 import { getTryonStatus } from "../api/tryonApi";
-import type { ClothCategory } from "../api/tryonApi";
-// 🗑️ [수정됨]: 에러의 원인이었던 html2canvas 임포트 완전 삭제
+import type { ClothCategory, TryonStatus } from "../api/tryonApi";
 
 type ResultPageState = {
   tryonId?: string;
   userPreview?: string | null;
   uploadedUserImageUrl?: string | null;
   clothType?: ClothCategory;
+  garmentCategory?: string;
 };
 
-// 프론트엔드에서 사용할 추천 아이템 구조
 interface RecommendItem {
   id: string;
   brandName: string;
@@ -22,21 +21,69 @@ interface RecommendItem {
   fileUrl: string;
 }
 
-// 백엔드 API 데이터 규격 선언
-interface GarmentApiResponse {
-  garmentId?: string;
-  id?: string;
-  brandKey?: string;
-  category?: string;
-  name?: string;
-  fileUrl?: string;
+interface LocalHistoryItem {
+  id: string;
+  originalImageUrl: string;
+  resultImageUrl: string;
+  category: string;
+  createdAt: string;
 }
+
+const normalizeFileUrl = (url?: string | null): string => {
+  if (!url) return "https://images.unsplash.com/photo-1540221652346-e5dd6b50f3e7?w=500&q=80";
+  if (url.startsWith("https://") || url.startsWith("data:")) return url;
+  if (url.startsWith("http://217.142.255.158")) {
+    return url.replace("http://217.142.255.158", "https://apivirtualtryon.p-e.kr");
+  }
+  const backendBase = "https://apivirtualtryon.p-e.kr";
+  const cleanUrl = url.startsWith("/") ? url : `/${url}`;
+  return `${backendBase}${cleanUrl}`;
+};
+
+const getCategoryDisplayName = (cat: string): string => {
+  const lower = cat.toLowerCase();
+  if (lower === "top" || lower === "upper") return "상의 (TOP)";
+  if (lower === "bottom" || lower === "lower") return "하의 (BOTTOM)";
+  if (lower === "dress" || lower === "overall") return "원피스 (DRESS)";
+  return "추천 의류";
+};
+
+// 💡 헬퍼 함수들을 컴포넌트 밖이나 최상단에 빼두어 TS2304 에러를 방지합니다.
+const getValidToken = (): string => {
+  const userRaw = sessionStorage.getItem("user");
+  const accessTokenRaw = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
+  const tokenRaw = sessionStorage.getItem("token") || localStorage.getItem("token");
+
+  if (accessTokenRaw) return accessTokenRaw;
+  if (tokenRaw) return tokenRaw;
+  if (userRaw) {
+    try {
+      const parsed = JSON.parse(userRaw);
+      return (parsed.accessToken || parsed.token || "") as string;
+    } catch { return ""; }
+  }
+  return "";
+};
+
+const getHistoryStorageKey = (): string => {
+  const userRaw = sessionStorage.getItem("user");
+  if (userRaw) {
+    try {
+      const parsed = JSON.parse(userRaw);
+      const identifier = parsed.id || parsed.userId || parsed.email || "guest";
+      return `fittingHistory_${identifier}`;
+    } catch {
+      return "fittingHistory_guest";
+    }
+  }
+  return "fittingHistory_guest";
+};
 
 const ResultPage = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  const { tryonId, userPreview, uploadedUserImageUrl, clothType } = (state || {}) as ResultPageState;
+  const { tryonId, userPreview, uploadedUserImageUrl, clothType, garmentCategory } = (state || {}) as ResultPageState;
 
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,32 +91,31 @@ const ResultPage = () => {
   const [rating, setRating] = useState(0);
   const [showRec, setShowRec] = useState(false);
 
+  const [backendResultId, setBackendResultId] = useState<string | null>(null);
   const [recommendedItems, setRecommendedItems] = useState<RecommendItem[]>([]);
   const [isRecLoading, setIsRecLoading] = useState(false);
+  const [currentCategoryLabel, setCurrentCategoryLabel] = useState("");
 
   const pollTimerRef = useRef<number | undefined>(undefined);
 
-  const finalUserImage = userPreview || uploadedUserImageUrl || null;
+  const rawUserImage = userPreview || uploadedUserImageUrl || null;
+  const finalUserImage = rawUserImage && rawUserImage.trim() !== "" ? rawUserImage : null;
 
-  const getStatusLabel = (status: string, type?: ClothCategory): string => {
-    const s = status.toLowerCase();
-    if (s === "queued") return "서버 대기열에서 차례를 기다리고 있습니다...";
-    if (s === "processing") {
+  const getStatusLabel = (status: TryonStatus, type?: ClothCategory): string => {
+    if (status === "queued") return "서버 대기열에서 차례를 기다리고 있습니다...";
+    if (status === "processing") {
       if (type === "lower") return "AI가 하체 라인에 맞춰 Bottom(하의)을 정밀 합성 중입니다...";
       if (type === "overall") return "AI가 전신 체형을 분석하여 Onepiece(원피스) 핏을 맞추는 중입니다...";
       return "AI가 상체 어깨와 소매 라인을 따라 Top(상의)을 매칭 중입니다...";
     }
-    if (s === "completed") return "스타일 변신 완료!";
-    if (s === "failed") return "합성에 실패했습니다. 사진 품질을 확인하세요.";
+    if (status === "completed") return "스타일 변신 완료!";
+    if (status === "failed") return "합성에 실패했습니다. 사진 품질을 확인하세요.";
     return "준비 중...";
   };
 
-  // 💡 [수정됨]: html2canvas 스크린샷 대신, 완성된 이미지 자체를 다운로드하는 안전한 로직
   const handleDownload = async () => {
     if (!resultImage) return;
-
     try {
-      // 이미지 URL을 가져와서 Blob(파일 객체)로 변환 후 브라우저 다운로드 실행
       const response = await fetch(resultImage);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -83,12 +129,10 @@ const ResultPage = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("다운로드 중 오류 발생:", error);
-      // 만약 다운로드가 막힌다면 새 창에서 이미지를 열어주어 사용자가 직접 저장하게 유도
       window.open(resultImage, "_blank");
     }
   };
 
-  // 1. 작업 상태 폴링 로직
   useEffect(() => {
     let active = true;
     const clearPolling = () => {
@@ -110,59 +154,64 @@ const ResultPage = () => {
           const polled = await getTryonStatus(tryonId);
           if (!active) return;
 
-          setStatusText(getStatusLabel(polled.status, clothType));
+          const currentStatus = polled.status;
+          setStatusText(getStatusLabel(currentStatus, clothType));
 
-          if (polled.status.toLowerCase() === "completed") {
-            setResultImage(polled.resultImageUrl || null);
+          if (currentStatus === "completed") {
+            const finalImg = polled.resultImageUrl || null;
+            const targetResultId = polled.resultId || tryonId || String(Math.random());
+
+            setResultImage(finalImg);
+            setBackendResultId(targetResultId);
+
+            // ✨ [유저별 저장소] 생성된 결과를 로컬에 저장
+            try {
+              const storageKey = getHistoryStorageKey();
+              const existingRaw = localStorage.getItem(storageKey);
+              const existingHistory: LocalHistoryItem[] = existingRaw ? JSON.parse(existingRaw) : [];
+
+              if (!existingHistory.find(item => item.id === targetResultId)) {
+                existingHistory.unshift({
+                  id: targetResultId,
+                  originalImageUrl: finalUserImage || "https://images.unsplash.com/photo-1540221652346-e5dd6b50f3e7?w=500",
+                  resultImageUrl: finalImg || "https://images.unsplash.com/photo-1540221652346-e5dd6b50f3e7?w=500",
+                  category: garmentCategory || clothType || "의류",
+                  createdAt: new Date().toISOString()
+                });
+                localStorage.setItem(storageKey, JSON.stringify(existingHistory));
+              }
+            } catch (error) {
+              console.error("로컬 스토리지 저장 실패:", error);
+            }
+
             setLoading(false);
             clearPolling();
-          } else if (polled.status.toLowerCase() === "failed") {
+          } else if (currentStatus === "failed") {
             setLoading(false);
             clearPolling();
           }
-        } catch (err) { console.error(err); }
+        } catch (err) {
+          console.error("🚨 폴링 중 에러 발생:", err);
+        }
       }, 3000);
     };
 
     runPolling();
     return () => { active = false; clearPolling(); };
-  }, [tryonId, navigate, clothType]);
+  }, [tryonId, navigate, clothType, finalUserImage, garmentCategory]);
 
-  // 2. 별점 입력 시 Spring DB 추천 API 호출
-  useEffect(() => {
-    if (rating === 0) return;
+  const handleRatingSubmit = (selectedRating: number) => {
+    setRating(selectedRating);
+    setShowRec(true);
 
-    const fetchRecommendations = async () => {
-      setIsRecLoading(true);
-      try {
-        const recType = rating >= 3 ? "similar" : "different";
-        const cat = clothType || "upper";
+    let targetCategory = garmentCategory || clothType || "top";
+    if (targetCategory === "upper") targetCategory = "top";
+    if (targetCategory === "lower") targetCategory = "bottom";
+    if (targetCategory === "overall") targetCategory = "dress";
+    setCurrentCategoryLabel(getCategoryDisplayName(targetCategory));
 
-        const response = await fetch(`https://apivirtualtryon.p-e.kr/api/v1/garments/recommend?type=${recType}&category=${cat}`);
-
-        if (response.ok) {
-          const data = await response.json();
-          const mappedItems: RecommendItem[] = data.map((item: GarmentApiResponse) => ({
-            id: item.garmentId || item.id || "0",
-            brandName: item.brandKey || "CapStone",
-            category: item.category || "unknown",
-            name: item.name || "추천 의류",
-            fileUrl: item.fileUrl ? `https://apivirtualtryon.p-e.kr${item.fileUrl}` : "https://via.placeholder.com/300x400?text=No+Image"
-          }));
-          setRecommendedItems(mappedItems);
-        } else {
-          console.warn("추천 데이터를 가져오지 못했습니다.");
-          setRecommendedItems([]);
-        }
-      } catch (error) {
-        console.error("추천 데이터 로드 에러:", error);
-      } finally {
-        setIsRecLoading(false);
-      }
-    };
-
-    fetchRecommendations();
-  }, [rating, clothType]);
+    setRecommendedItems([]);
+  };
 
   const handleRecommendClick = (item: RecommendItem) => {
     alert(`${item.brandName}의 [${item.name}] 상품으로 이동합니다!`);
@@ -171,8 +220,6 @@ const ResultPage = () => {
   return (
       <div className="min-h-screen bg-[#F5F5F3] pb-32 font-sans text-[#111111]">
         <Header />
-
-        {/* 상단 결과 타이틀 */}
         <div className="max-w-[1600px] mx-auto px-10 pt-16 pb-12 flex justify-between items-end">
           <div>
             <h1 className="text-6xl font-[1000] tracking-tighter uppercase">Fitting Result</h1>
@@ -192,7 +239,6 @@ const ResultPage = () => {
           </div>
         </div>
 
-        {/* 전후 비교 이미지 섹션 */}
         <div className="max-w-[1600px] mx-auto grid md:grid-cols-2 gap-12 px-10 mb-24">
           <div className="space-y-5">
             <span className="text-[11px] font-[1000] text-gray-300 uppercase px-2 tracking-[0.2em]">Original Identity</span>
@@ -216,9 +262,8 @@ const ResultPage = () => {
                   </div>
               ) : (
                   <>
-                    <img src={resultImage || ""} className="w-full h-full object-contain bg-white animate-in fade-in duration-1000" alt="Result" />
+                    <img src={resultImage || undefined} className="w-full h-full object-contain bg-white animate-in fade-in duration-1000" alt="Result" />
                     <div className="absolute top-6 left-6 bg-[#2563EB] text-white px-5 py-1.5 rounded-full text-[10px] font-black uppercase shadow-lg">Generated</div>
-                    {/* 다운로드 버튼 클릭 시 handleDownload 호출 */}
                     <button onClick={handleDownload} className="absolute bottom-8 right-8 p-6 bg-[#111111] text-white rounded-full hover:scale-110 transition-all shadow-2xl group">
                       <Download size={24} className="group-hover:-translate-y-1 transition-transform" />
                     </button>
@@ -228,16 +273,14 @@ const ResultPage = () => {
           </div>
         </div>
 
-        {/* 별점 평가 및 DB 맞춤 추천 섹션 */}
         {!loading && resultImage && (
             <div className="max-w-[1600px] mx-auto px-10 animate-in fade-in slide-in-from-bottom-10 duration-1000">
               <div className="bg-[#111111] p-16 md:p-20 rounded-[3rem] text-white relative overflow-hidden shadow-2xl">
-
                 <div className="text-center mb-16">
                   <h2 className="text-3xl md:text-4xl font-[1000] mb-8 tracking-tighter uppercase">결과가 마음에 드시나요?</h2>
                   <div className="flex justify-center gap-4 md:gap-6">
                     {[1, 2, 3, 4, 5].map((idx) => (
-                        <button key={idx} onClick={() => { setRating(idx); setShowRec(true); }} className="hover:scale-125 transition-transform">
+                        <button key={idx} onClick={() => handleRatingSubmit(idx)} className="hover:scale-125 transition-transform">
                           <Star size={48} className={`transition-all ${idx <= rating ? "fill-[#2563EB] text-[#2563EB]" : "text-gray-700"}`} />
                         </button>
                     ))}
@@ -248,11 +291,18 @@ const ResultPage = () => {
                     <div className="border-t border-gray-800 pt-16 animate-in slide-in-from-bottom-8 duration-700">
                       <div className="flex justify-between items-end mb-8">
                         <div>
-                          <p className="text-[#2563EB] font-black uppercase tracking-widest text-xs mb-2">Personalized Pick</p>
-                          <h3 className="text-2xl font-black">
-                            {rating >= 3
-                                ? "마음에 드셨군요! DB에서 찾은 비슷한 스타일을 추천해드려요."
-                                : "아쉬우셨군요. DB에서 완전히 새로운 스타일을 찾아봤어요!"}
+                          <p className="text-[#2563EB] font-black uppercase tracking-widest text-xs mb-2">
+                            Backend Recommendation Showcase / {currentCategoryLabel}
+                          </p>
+                          <h3 className="text-2xl font-black flex items-center gap-2 flex-wrap">
+                            <span className="bg-[#2563EB] text-white text-xs px-3 py-1.5 rounded-lg uppercase font-black">
+                              {currentCategoryLabel}
+                            </span>
+                            {rating >= 4
+                                ? "고객님의 취향에 맞춘 유사한(SIMILAR) 추천 스타일입니다."
+                                : rating <= 2
+                                    ? "색다른 매력을 선사할 대비되는(CONTRAST) 추천 스타일입니다."
+                                    : "다채로운 매력을 담은 혼합형(MIXED) 추천 스타일입니다."}
                           </h3>
                         </div>
                         <button className="text-xs font-bold text-gray-400 hover:text-white flex items-center gap-1 transition-colors">
@@ -260,7 +310,6 @@ const ResultPage = () => {
                         </button>
                       </div>
 
-                      {/* API 로딩 및 데이터 렌더링 */}
                       {isRecLoading ? (
                           <div className="flex justify-center items-center py-20">
                             <Loader2 className="animate-spin text-[#2563EB]" size={40} />
@@ -277,7 +326,9 @@ const ResultPage = () => {
                                     <img src={item.fileUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                   </div>
                                   <div className="p-5">
-                                    <p className="text-[10px] font-black tracking-widest text-gray-400 mb-1 uppercase">{item.category} / {item.brandName}</p>
+                                    <p className="text-[10px] font-black tracking-widest text-[#2563EB] mb-1 uppercase">
+                                      {item.category.toUpperCase()} / {item.brandName}
+                                    </p>
                                     <p className="text-sm font-bold truncate">{item.name}</p>
                                   </div>
                                 </div>
@@ -285,12 +336,11 @@ const ResultPage = () => {
                           </div>
                       ) : (
                           <div className="text-center py-10 text-gray-500 font-bold">
-                            추천할 데이터가 아직 DB에 없습니다. 옷을 더 등록해주세요!
+                            추천 의류 데이터가 존재하지 않습니다.
                           </div>
                       )}
                     </div>
                 )}
-
               </div>
             </div>
         )}

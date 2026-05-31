@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import Header from "../components/layout/Header";
 import { FixUser } from "./FixUser";
 import { FavoritePage } from "./FavoritePage";
+import { FittingHistory } from "./FittingHistory"; // 💡 새로 만든 컴포넌트 임포트
 
 export interface UserInfo {
   id: number;
@@ -23,7 +24,7 @@ function hasUserProperty(data: unknown): data is { user: unknown } {
 }
 
 const HistoryPage = () => {
-  const [activeTab, setActiveTab] = useState<"info" | "profile" | "favorite">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "profile" | "favorite" | "history">("history");
 
   // 로그인 시 세션스토리지에 저장된 사용자 정보를 안전하게 불러옵니다.
   const user = useMemo((): UserInfo | null => {
@@ -61,6 +62,13 @@ const HistoryPage = () => {
             >
               👤 내 정보
             </button>
+            {/* 💡 피팅 히스토리 버튼 추가 */}
+            <button
+                onClick={() => setActiveTab("history")}
+                className={`w-full text-left px-4 py-3.5 font-bold text-sm rounded-xl transition-colors ${activeTab === "history" ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-50"}`}
+            >
+              👗 피팅 히스토리
+            </button>
             <button
                 onClick={() => setActiveTab("profile")}
                 className={`w-full text-left px-4 py-3.5 font-bold text-sm rounded-xl transition-colors ${activeTab === "profile" ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-50"}`}
@@ -97,6 +105,8 @@ const HistoryPage = () => {
                 </div>
             )}
 
+            {/* 💡 피팅 히스토리 탭 콘텐츠 연결 */}
+            {activeTab === "history" && <FittingHistory />}
             {activeTab === "profile" && <FixUser user={user} />}
             {activeTab === "favorite" && <FavoritePage />}
           </main>
