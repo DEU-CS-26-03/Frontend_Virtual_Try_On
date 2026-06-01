@@ -32,19 +32,27 @@ const FittingPage = () => {
         return file ? URL.createObjectURL(file) : null;
     }, [file]);
 
-    // 💡 1. [추가] 브라우저 전체 영역 방어막
-    // 사용자가 엉뚱한 곳에 사진을 떨어뜨려도 새 창이 열리지 않게 막습니다.
+    // 💡 1. 브라우저 전체 영역 새 창 열림 방지 철벽 방어막
     useEffect(() => {
         const preventGlobalDrag = (e: DragEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
+            const target = e.target as HTMLElement;
+
+            // 드롭존(.dropzone-container) 내부에서 일어난 정상적인 드롭이 아니라면
+            // 브라우저가 혼자 새 창을 열어버리는 기본 동작을 최상위 단계에서 원천 차단합니다.
+            if (!target.closest(".dropzone-container")) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
         };
-        window.addEventListener("dragover", preventGlobalDrag);
-        window.addEventListener("drop", preventGlobalDrag);
+
+        window.addEventListener("dragenter", preventGlobalDrag, { capture: true });
+        window.addEventListener("dragover", preventGlobalDrag, { capture: true });
+        window.addEventListener("drop", preventGlobalDrag, { capture: true });
 
         return () => {
-            window.removeEventListener("dragover", preventGlobalDrag);
-            window.removeEventListener("drop", preventGlobalDrag);
+            window.removeEventListener("dragenter", preventGlobalDrag, { capture: true });
+            window.removeEventListener("dragover", preventGlobalDrag, { capture: true });
+            window.removeEventListener("drop", preventGlobalDrag, { capture: true });
         };
     }, []);
 
@@ -205,24 +213,27 @@ const FittingPage = () => {
 
             {/* 메인 업로드 영역 */}
             <div className="max-w-[1600px] mx-auto grid md:grid-cols-2 gap-12 px-10 mt-4">
+                {/* Step 1: User Photo */}
                 <div className="flex flex-col">
                     <div className="flex justify-between items-end mb-6 px-2">
                         <span className="text-[11px] font-[1000] tracking-[0.3em] text-[#2563EB] uppercase">Step 01</span>
                         <h2 className="text-xl font-black">내 정면 사진</h2>
                     </div>
 
-                    {/* 💡 중복된 껍데기 하나 삭제 후, 드래그 기능이 달린 이 박스 하나만 남깁니다! */}
+                    {/* 💡 className 맨 앞에 dropzone-container 식별자를 추가했습니다. */}
                     <div
-                        onDragEnter={handleDragEnter} // ✨ 잊지 말고 추가
+                        onDragEnter={handleDragEnter}
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        className={`min-h-[500px] max-h-[650px] aspect-[3/4] md:aspect-auto w-full bg-[#F9F9F9] rounded-3xl border-2 flex flex-col items-center justify-center shadow-sm overflow-hidden relative group p-4 transition-all duration-300 ${
+                        className={`dropzone-container min-h-[500px] max-h-[650px] aspect-[3/4] md:aspect-auto w-full bg-[#F9F9F9] rounded-3xl border-2 flex flex-col items-center justify-center shadow-sm overflow-hidden relative group p-4 transition-all duration-300 ${
                             isDragging ? "border-[#2563EB] bg-blue-50/50 border-dashed" : "border-gray-200"
                         }`}
                     >
                         {userPreviewUrl ? (
-                            <div className="w-full h-full flex items-center justify-center">
+                            // 💡 pointer-events-none를 추가하여 기존 프리뷰 이미지 위에
+                            // 다른 이미지를 다시 드롭해도 파일 인식이 끊기거나 새 창이 뜨지 않도록 철벽 방어합니다.
+                            <div className="w-full h-full flex items-center justify-center pointer-events-none">
                                 <img
                                     src={userPreviewUrl}
                                     className="max-w-full max-h-full w-auto h-auto object-contain rounded-2xl transition-transform duration-700 group-hover:scale-102"

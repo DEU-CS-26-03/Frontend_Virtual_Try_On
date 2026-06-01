@@ -321,15 +321,6 @@ const ResultPage = () => {
               ) : (
                   <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">No Image</div>
               )}
-              {/* 모델 사진 좌측 상단 돋보기 */}
-              {finalUserImage && (
-                  <button
-                      onClick={() => setZoomedImage(finalUserImage)}
-                      className="absolute top-4 left-4 p-2 bg-white/80 backdrop-blur-sm text-gray-800 rounded-full hover:bg-[#111111] hover:text-white transition-all shadow-sm z-10"
-                  >
-                    <ZoomIn size={18} />
-                  </button>
-              )}
               <div className="absolute bottom-5 left-5 bg-[#111111]/90 backdrop-blur-sm text-white px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-md z-10">
                 MODEL
               </div>
