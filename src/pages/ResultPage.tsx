@@ -282,11 +282,24 @@ const ResultPage = () => {
 
   return (
       <div className="min-h-screen bg-[#F5F5F3] pb-32 font-sans text-[#111111]">
-        {/* ✨ 확대 클릭 시 화면 전체를 덮는 라이트박스 모달 스크린 */}
+        {/* ✨ 최적화된 확대 모달: 여백(p-4)을 주어 잘림 현상을 방지하고 이미지 비율을 완벽히 유지합니다. */}
         {zoomedImage && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md" onClick={() => setZoomedImage(null)}>
-              <button className="absolute top-8 right-8 text-white hover:scale-110 transition-transform"><X size={40} /></button>
-              <img src={zoomedImage} className="max-w-[90vw] max-h-[90vh] object-contain rounded-2xl animate-in zoom-in duration-300" alt="Zoomed" />
+            <div
+                className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-10 cursor-zoom-out"
+                onClick={() => setZoomedImage(null)}
+            >
+              <button className="absolute top-6 right-6 text-white/50 hover:text-white hover:scale-110 transition-all z-[110]">
+                <X size={40} />
+              </button>
+
+              {/* 이미지가 화면을 넘지 않으면서도 최대 크기로 출력되도록 조정 */}
+              <div className="relative w-full h-full flex items-center justify-center">
+                <img
+                    src={zoomedImage}
+                    className="max-w-[95vw] max-h-[95vh] w-auto h-auto object-contain rounded-md shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300"
+                    alt="Zoomed Result"
+                />
+              </div>
             </div>
         )}
 
