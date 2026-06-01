@@ -90,6 +90,18 @@ function normalizeStatus(status?: string): TryonStatus {
   return "queued";
 }
 
+// 💡 [추가됨]: 백엔드의 물리적 경로(/data/uploads/...)를 웹에서 볼 수 있는 진짜 URL로 변환해주는 마법의 함수
+const parseBackendPathToUrl = (dbPath?: string): string => {
+  if (!dbPath) return "";
+  if (dbPath.startsWith("http") || dbPath.startsWith("data:") || dbPath.startsWith("blob:")) return dbPath;
+
+  const filename = dbPath.split('/').pop() || "";
+  const baseUrl = "https://apivirtualtryon.p-e.kr";
+  if (filename.startsWith("result_")) return `${baseUrl}/uploads/results/${filename}`;
+  return `${baseUrl}/uploads/${filename}`;
+};
+
+// 💡 [수정됨]: userImageId와 garmentId를 파싱할 때 변환 함수(parseBackendPathToUrl)를 거치도록 씌워줍니다!
 function fromTryonWire(payload: TryonResponsePayload): TryonJob {
   const data = payload?.data ? payload.data : payload;
 
@@ -98,11 +110,13 @@ function fromTryonWire(payload: TryonResponsePayload): TryonJob {
     userId: data?.userId ?? data?.user_id ?? 0,
     status: normalizeStatus(data?.status),
     progress: Number(data?.progress ?? 0),
-    userImageId: data?.userimageid ?? data?.userImageId ?? data?.user_image_id,
-    garmentId: data?.garmentid ?? data?.garmentId ?? data?.garment_id,
+
+    // ✨ 핵심: 여기서 백엔드의 엉터리 로컬 경로를 웹 주소로 완벽하게 포장해서 리턴합니다!
+    userImageId: parseBackendPathToUrl(data?.userimageid ?? data?.userImageId ?? data?.user_image_id),
+    garmentId: parseBackendPathToUrl(data?.garmentid ?? data?.garmentId ?? data?.garment_id),
+    resultImageUrl: parseBackendPathToUrl(data?.resultimageurl ?? data?.resultImageUrl ?? data?.result_image_url ?? data?.result_url),
+
     resultId: data?.resultid ?? data?.resultId ?? data?.result_id,
-    // 💡 다양한 이미지 URL 변수명 방어
-    resultImageUrl: data?.resultimageurl ?? data?.resultImageUrl ?? data?.result_image_url ?? data?.result_url,
     message: data?.message,
     error: data?.error,
     createdAt: data?.createdat ?? data?.createdAt ?? data?.created_at,

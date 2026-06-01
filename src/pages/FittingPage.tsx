@@ -23,6 +23,7 @@ const FittingPage = () => {
 
     // 상태 관리
     const [file, setFile] = useState<File | null>(null);
+    const [isDragging, setIsDragging] = useState(false); // ✨ 드래그 상태 추가
     const [isLoading, setIsLoading] = useState(false);
     // ★ 에러 방지: 렌더링 시점에 자동 판별된 값을 초기값으로 세팅
     const [selectedCategory, setSelectedCategory] = useState<ClothCategory>(getMappedCategory(category));
@@ -30,6 +31,50 @@ const FittingPage = () => {
     const userPreviewUrl = useMemo(() => {
         return file ? URL.createObjectURL(file) : null;
     }, [file]);
+
+    // 💡 1. [추가] 브라우저 전체 영역 방어막
+    // 사용자가 엉뚱한 곳에 사진을 떨어뜨려도 새 창이 열리지 않게 막습니다.
+    useEffect(() => {
+        const preventGlobalDrag = (e: DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+        };
+        window.addEventListener("dragover", preventGlobalDrag);
+        window.addEventListener("drop", preventGlobalDrag);
+
+        return () => {
+            window.removeEventListener("dragover", preventGlobalDrag);
+            window.removeEventListener("drop", preventGlobalDrag);
+        };
+    }, []);
+
+    // 💡 2. [수정] 핸들러 철벽 방어 코드로 강화 (stopPropagation 필수)
+    const handleDragEnter = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            setFile(e.dataTransfer.files[0]);
+        }
+    };
 
     useEffect(() => {
         return () => { if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl); };
@@ -77,7 +122,8 @@ const FittingPage = () => {
 
             // 1. 의류 이미지 다운로드 및 가공
             const backendBaseUrl = "https://apivirtualtryon.p-e.kr";
-            const targetClothUrl = cloth.startsWith("http") ? cloth : backendBaseUrl + cloth;
+            const cleanClothUrl = cloth.startsWith("/") ? cloth : `/${cloth}`; // 무조건 앞에 /를 붙임
+            const targetClothUrl = cloth.startsWith("http") ? cloth : `${backendBaseUrl}${cleanClothUrl}`;
             const response = await fetch(targetClothUrl);
             const blob = await response.blob();
             const clothFile = new File([blob], "cloth.jpg", { type: "image/jpeg" });
@@ -98,7 +144,8 @@ const FittingPage = () => {
                     tryonId: job.tryonId,
                     userPreview: compressedUserImage, // ✨ 용량이 획기적으로 줄어든 영구 저장용 주소
                     clothType: selectedCategory,
-                    clothPreview: cloth
+                    clothPreview: cloth,
+                    garmentCategory: category // ✨ 원본 카테고리(outer 등) 정보를 잊지 않고 넘겨줍니다!
                 }
             });
 
@@ -158,30 +205,38 @@ const FittingPage = () => {
 
             {/* 메인 업로드 영역 */}
             <div className="max-w-[1600px] mx-auto grid md:grid-cols-2 gap-12 px-10 mt-4">
-                {/* Step 1: User Photo */}
                 <div className="flex flex-col">
                     <div className="flex justify-between items-end mb-6 px-2">
                         <span className="text-[11px] font-[1000] tracking-[0.3em] text-[#2563EB] uppercase">Step 01</span>
                         <h2 className="text-xl font-black">내 정면 사진</h2>
                     </div>
-    
-                    <div className="min-h-[500px] max-h-[650px] aspect-[3/4] md:aspect-auto w-full bg-[#F9F9F9] rounded-3xl border border-gray-200 flex flex-col items-center justify-center shadow-sm overflow-hidden relative group p-4">
+
+                    {/* 💡 중복된 껍데기 하나 삭제 후, 드래그 기능이 달린 이 박스 하나만 남깁니다! */}
+                    <div
+                        onDragEnter={handleDragEnter} // ✨ 잊지 말고 추가
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className={`min-h-[500px] max-h-[650px] aspect-[3/4] md:aspect-auto w-full bg-[#F9F9F9] rounded-3xl border-2 flex flex-col items-center justify-center shadow-sm overflow-hidden relative group p-4 transition-all duration-300 ${
+                            isDragging ? "border-[#2563EB] bg-blue-50/50 border-dashed" : "border-gray-200"
+                        }`}
+                    >
                         {userPreviewUrl ? (
                             <div className="w-full h-full flex items-center justify-center">
-                                <img 
-                                    src={userPreviewUrl} 
-                                    className="max-w-full max-h-full w-auto h-auto object-contain rounded-2xl transition-transform duration-700 group-hover:scale-102" 
-                                    alt="Preview" 
+                                <img
+                                    src={userPreviewUrl}
+                                    className="max-w-full max-h-full w-auto h-auto object-contain rounded-2xl transition-transform duration-700 group-hover:scale-102"
+                                    alt="Preview"
                                 />
                             </div>
                         ) : (
-                            // 이미지가 없을 때는 UploadBox가 중앙에 이쁘게 나오도록 처리
-                            <div className="w-full h-full flex items-center justify-center">
+                            <div className="w-full h-full flex flex-col items-center justify-center pointer-events-none">
                                 <UploadBox />
+                                <p className="mt-4 text-[11px] font-bold text-gray-400">또는 이미지를 이곳으로 드래그 앤 드롭</p>
                             </div>
                         )}
                     </div>
-    
+
                     <div className="mt-8">
                         <UploadButton onChange={setFile} />
                     </div>
