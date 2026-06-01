@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { apiRequest, API_ROUTES, API_BASE_URL, ApiError } from "../api/client";
-import type { UserInfo } from "./HistoryPage";
+import type { UserInfo } from "./Mypage.tsx";
 
 interface FixUserProps {
     user: UserInfo | null;
