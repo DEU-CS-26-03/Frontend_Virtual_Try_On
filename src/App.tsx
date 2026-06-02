@@ -4,7 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RagisterPage";
 import Fitting from "./pages/fitting";
 import ResultPage from "./pages/ResultPage";
-import HistoryPage from "./pages/HistoryPage";
+import Mypage from "./pages/Mypage.tsx";
 
 // 💡 1. 공통으로 띄울 Footer 컴포넌트 임포트 (경로는 프로젝트 환경에 맞게 확인해주세요)
 import Footer from "./components/layout/Footer";
@@ -25,7 +25,7 @@ function App() {
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/fitting" element={<Fitting />} />
                         <Route path="/result" element={<ResultPage />} />
-                        <Route path="/history" element={<HistoryPage />} />
+                        <Route path="/history" element={<Mypage />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </main>

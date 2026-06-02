@@ -1,4 +1,5 @@
-// src/components/result/ResultImage.tsx
+import { Loader2 } from "lucide-react";
+
 interface Props {
     imageUrl: string | null;
     loading: boolean;
@@ -8,23 +9,23 @@ interface Props {
 const ResultImage = ({ imageUrl, loading, statusText }: Props) => {
     if (loading) {
         return (
-            <div className="h-[420px] bg-gray-50 rounded-2xl flex flex-col items-center justify-center">
-                <div className="w-14 h-14 border-4 border-gray-200 border-t-black rounded-full animate-spin mb-4" />
-                <p className="text-sm font-bold text-gray-400">{statusText || "처리 중..."}</p>
+            <div className="text-center space-y-4 px-8 flex flex-col items-center justify-center h-full">
+                <Loader2 className="w-12 h-12 animate-spin text-[#34D399] mx-auto" />
+                <div className="space-y-2">
+                    <p className="text-xs font-black uppercase text-gray-800 tracking-widest animate-pulse leading-relaxed">{statusText}</p>
+                    <p className="text-[10px] text-gray-400 font-bold tracking-tight">AI 추론 엔진 가동 중 (평균 30초 소요)</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="h-[420px] bg-gray-50 rounded-2xl overflow-hidden">
-            {imageUrl ? (
-                <img src={imageUrl} alt="result" className="w-full h-full object-cover" />
-            ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-300 font-bold">
-                    결과 이미지 없음
-                </div>
-            )}
-        </div>
+        <>
+            <img src={imageUrl || undefined} className="w-full h-full object-contain bg-white animate-in fade-in duration-1000" alt="Result" />
+            <div className="absolute bottom-8 left-8 bg-[#34D399] text-black px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">
+                TRY-ON RESULT
+            </div>
+        </>
     );
 };
 

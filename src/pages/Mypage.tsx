@@ -23,7 +23,7 @@ function hasUserProperty(data: unknown): data is { user: unknown } {
   return "user" in data;
 }
 
-const HistoryPage = () => {
+const Mypage = () => {
   const [activeTab, setActiveTab] = useState<"info" | "profile" | "favorite" | "history">("history");
 
   // 로그인 시 세션스토리지에 저장된 사용자 정보를 안전하게 불러옵니다.
@@ -116,4 +116,4 @@ const HistoryPage = () => {
   );
 };
 
-export default HistoryPage;
+export default Mypage;

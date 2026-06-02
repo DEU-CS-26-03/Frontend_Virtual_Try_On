@@ -22,13 +22,68 @@ const Fitting = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ClothCategory>(getMappedCategory(category));
 
+  // 💡 [추가]: UploadModal의 모범 자산을 본받아 드래그 상태 관리 스위치 추가
+  const [isDragging, setIsDragging] = useState(false);
+
   const userPreviewUrl = useMemo(() => {
     return file ? URL.createObjectURL(file) : null;
   }, [file]);
 
+  // 💡 [철벽 방어]: 탐색기에서 파일을 끌어다 놓을 때 브라우저가 멋대로 새 탭을 여는 기본 이벤트를 전역에서 원천 차단합니다.
   useEffect(() => {
-    //return () => { if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl); };
+    const handleGlobalPrevent = (e: globalThis.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    window.addEventListener("dragenter", handleGlobalPrevent, false);
+    window.addEventListener("dragover", handleGlobalPrevent, false);
+    window.addEventListener("drop", handleGlobalPrevent, false);
+
+    return () => {
+      window.removeEventListener("dragenter", handleGlobalPrevent, false);
+      window.removeEventListener("dragover", handleGlobalPrevent, false);
+      window.removeEventListener("drop", handleGlobalPrevent, false);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => { if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl); };
   }, [userPreviewUrl]);
+
+  // 💡 [추가]: 컴포넌트 레벨의 드래그 앤 드롭 핸들러 함수 명시적 정의 (any 없음)
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile) {
+      if (!droppedFile.type.startsWith("image/")) {
+        alert("이미지 파일만 업로드 가능합니다.");
+        return;
+      }
+      setFile(droppedFile);
+    }
+  };
 
   const handleNext = async () => {
     if (!file || !cloth) {
@@ -38,7 +93,6 @@ const Fitting = () => {
     try {
       setIsLoading(true);
       const backendBaseUrl = "https://apivirtualtryon.p-e.kr";
-      // CORS 및 혼합 콘텐츠(Mixed Content) 방지를 위해 URL 정제
       const targetClothUrl = cloth.startsWith("http") ? cloth : backendBaseUrl + cloth;
 
       // 현실적 방어 로직: 캡스톤 시연 중 외부 이미지 로딩 지연 방지를 위한 AbortController (10초 컷)
@@ -64,7 +118,7 @@ const Fitting = () => {
       navigate("/result", {
         state: { tryonId: job.tryonId, userPreview: userPreviewUrl, clothType: selectedCategory, clothPreview: cloth }
       });
-    } catch (error) { // TS에서 error는 기본적으로 unknown 타입
+    } catch (error) {
       console.error("서버 통신 오류:", error);
 
       // error가 실제 Error 객체인지 확인 (Type Guard)
@@ -86,7 +140,6 @@ const Fitting = () => {
         <Header />
 
         <div className="max-w-[1200px] mx-auto px-6 pt-16 pb-12 flex flex-col items-center relative">
-          {/* ★ 에러 해결: ChevronLeft 아이콘 사용 (뒤로 가기 버튼) */}
           <button onClick={() => navigate("/")} className="absolute left-6 top-16 group p-4 bg-white rounded-full border border-gray-200 hover:bg-[#111111] transition-all shadow-sm hidden md:block">
             <ChevronLeft size={24} className="group-hover:text-white" />
           </button>
@@ -94,7 +147,7 @@ const Fitting = () => {
           <h1 className="text-4xl font-[1000] tracking-tighter mb-2 uppercase italic">Virtual Fitting</h1>
           <p className="text-gray-400 font-bold text-xs tracking-widest mb-12">CHOOSE CATEGORY & UPLOAD YOUR PHOTO</p>
 
-          {/* 1. 카테고리 선택 (상단 중앙 배치 - 페이지 중심 기준 좌우 대칭) */}
+          {/* 1. 카테고리 선택 */}
           <div className="flex justify-center gap-4 mb-10 w-full max-w-[600px]">
             {["upper", "lower", "overall"].map((cat) => (
                 <button
@@ -111,28 +164,37 @@ const Fitting = () => {
             ))}
           </div>
 
-          {/* 2. 메인 컨텐츠 영역 (2-Column 대칭 레이아웃) */}
+          {/* 2. 메인 컨텐츠 영역 */}
           <div className="grid md:grid-cols-2 gap-8 w-full">
 
-            {/* Step 01: 내 모델 사진 (왼쪽) */}
+            {/* Step 01: 내 모델 사진 (드래그 앤 드롭 이식 완료) */}
             <div className="flex flex-col gap-4">
               <div className="flex justify-between items-end px-2">
-                {/* ★ 에러 해결: Shirt 아이콘 사용 */}
                 <span className="text-[10px] font-black text-[#2563EB] tracking-widest uppercase flex items-center gap-1">
-                <Shirt size={12} /> Step 01
-              </span>
+                  <Shirt size={12} /> Step 01
+                </span>
                 <h2 className="text-lg font-black italic">MY MODEL</h2>
               </div>
-              <div className="relative aspect-[3/4] bg-white rounded-[2.5rem] border border-gray-200 shadow-sm overflow-hidden group">
+
+              <div
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`relative aspect-[3/4] bg-white rounded-[2.5rem] border shadow-sm overflow-hidden group transition-all duration-300
+                    ${isDragging ? "border-[#2563EB] bg-blue-50/30 border-dashed scale-[1.01]" : "border-gray-200"}
+                  `}
+              >
                 {userPreviewUrl ? (
-                    <>
+                    // 💡 pointer-events-none 적용으로 내부 이미지 컨텐츠가 드래그 인식을 뺏는 버그 차단
+                    <div className="w-full h-full pointer-events-none relative">
                       <img src={userPreviewUrl} className="w-full h-full object-cover" alt="Model" />
 
-                      {/* ★ 팝업 형태의 미리보기 (우측 모서리) */}
                       {cloth && (
                           <div className={`absolute right-4 ${selectedCategory === 'upper' ? 'top-4' : 'bottom-4'} 
-                      w-32 h-44 bg-white/90 backdrop-blur-md rounded-3xl border border-white shadow-2xl 
-                      flex items-center justify-center p-3 animate-in fade-in slide-in-from-right-5 duration-500`}>
+                            w-32 h-44 bg-white/90 backdrop-blur-md rounded-3xl border border-white shadow-2xl 
+                            flex items-center justify-center p-3 animate-in fade-in slide-in-from-right-5 duration-500`}
+                          >
                             <div className="relative w-full h-full flex flex-col">
                               <p className="text-[8px] font-black text-[#2563EB] mb-2 text-center flex items-center justify-center gap-1">
                                 <Zap size={8} fill="currentColor"/> PREVIEW
@@ -141,23 +203,26 @@ const Fitting = () => {
                                 <img
                                     src={cloth}
                                     className={`w-[70%] h-auto object-contain drop-shadow-lg transition-transform duration-700
-                              ${selectedCategory === 'upper' ? 'translate-y-[-10%]' : ''}
-                              ${selectedCategory === 'lower' ? 'translate-y-[10%]' : ''}
-                            `}
+                                      ${selectedCategory === 'upper' ? 'translate-y-[-10%]' : ''}
+                                      ${selectedCategory === 'lower' ? 'translate-y-[10%]' : ''}
+                                    `}
                                     alt="Cloth Popup"
                                 />
                               </div>
                             </div>
                           </div>
                       )}
-                    </>
+                    </div>
                 ) : (
-                    <div className="h-full flex items-center justify-center"><UploadBox /></div>
+                    <div className="h-full flex flex-col items-center justify-center pointer-events-none">
+                      <UploadBox />
+                      <p className="text-[10px] font-bold text-gray-400 mt-2">이곳에 사진을 드래그해서 놓을 수도 있습니다</p>
+                    </div>
                 )}
               </div>
             </div>
 
-            {/* Step 02: 선택한 의상 (오른쪽) */}
+            {/* Step 02: 선택한 의상 */}
             <div className="flex flex-col gap-4">
               <div className="flex justify-between items-end px-2">
                 <span className="text-[10px] font-black text-gray-300 tracking-widest uppercase">Step 02</span>
@@ -169,7 +234,7 @@ const Fitting = () => {
             </div>
           </div>
 
-          {/* 3. 하단 보조 버튼 (같은 x축, 완벽한 좌우 대칭 배치) */}
+          {/* 3. 하단 보조 버튼 */}
           <div className="grid grid-cols-2 gap-8 w-full mt-8">
             <label className="flex items-center justify-center gap-3 py-5 bg-white border-2 border-dashed border-gray-200 rounded-3xl font-black text-[11px] tracking-widest text-gray-500 hover:border-[#111111] hover:text-[#111111] cursor-pointer transition-all shadow-sm">
               <ImagePlus size={18} />
