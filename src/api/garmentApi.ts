@@ -123,9 +123,9 @@ function fromGarmentWire(data: GarmentWire): GarmentItem {
     };
 }
 
-// 💡 2. 중간에 꼬여있던 괄호를 지우고 완벽하게 하나로 통합된 getGarments 함수
+// 💡 2. 완벽하게 하나로 통합된 getGarments 함수
 export async function getGarments(category?: string): Promise<GarmentItem[]> {
-    // ① 전체 의류 목록을 조건 없이 다 가져옵니다.
+    // ① 전체 의류 목록을 조건 없이 다 가져옵니다. (의류 목록 조회는 보통 토큰 없이도 가능하도록 설계됨)
     const data = await apiRequest<GarmentWire[]>(API_ROUTES.GARMENTS);
 
     // ② 가져온 데이터들의 카테고리를 프론트 기준(top, bottom, outer, dress)으로 전부 예쁘게 정리합니다.
@@ -141,6 +141,7 @@ export async function getGarments(category?: string): Promise<GarmentItem[]> {
     return allGarments.filter(item => item.category === targetCategory);
 }
 
+// 💡 3. 옷 등록 API (반드시 withAuth: true 필요)
 export async function createGarment(params: {
     fileUrl: string;
     category: Exclude<GarmentCategory, "all">;
@@ -148,7 +149,7 @@ export async function createGarment(params: {
 }): Promise<GarmentItem> {
     const data = await apiRequest<GarmentWire>(API_ROUTES.GARMENTS, {
         method: "POST",
-        withAuth: true,
+        withAuth: true, // ★ 로그인 토큰 자동 포함
         body: JSON.stringify({
             fileUrl: params.fileUrl,
             category: params.category,
@@ -159,45 +160,15 @@ export async function createGarment(params: {
     return fromGarmentWire(data);
 }
 
+// 💡 4. 옷 삭제 API (지저분한 로직 버리고 apiRequest로 통일!)
 export async function deleteGarment(garmentId: string): Promise<void> {
-    let token = "";
-
-    const savedUser = sessionStorage.getItem("user");
-    if (savedUser) {
-        try {
-            const parsed = JSON.parse(savedUser);
-            token = parsed.accessToken || parsed.token || "";
-        } catch (e) {
-            console.error("sessionStorage 'user' 파싱 실패:", e);
-        }
-    }
-
-    if (!token) {
-        token = sessionStorage.getItem("token") ||
-            sessionStorage.getItem("accessToken") ||
-            localStorage.getItem("token") ||
-            localStorage.getItem("accessToken") || "";
-    }
-
-    if (!token) {
-        alert("로그인 정보가 만료되었습니다. 다시 로그인해 주세요.");
-        throw new Error("인증 토큰이 없습니다.");
-    }
-
-    const response = await fetch(`${API_ROUTES.GARMENTS}/${garmentId}`, {
+    await apiRequest(`${API_ROUTES.GARMENTS}/${garmentId}`, {
         method: "DELETE",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-        },
+        withAuth: true, // ★ 로그인 토큰 자동 포함 (401 에러 방지)
     });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `삭제 실패 (Status: ${response.status})`);
-    }
 }
 
+// 💡 5. 특정 옷 상세 조회 API
 export async function getGarmentById(garmentId: string): Promise<GarmentItem> {
     const data = await apiRequest<GarmentWire>(`${API_ROUTES.GARMENTS}/${garmentId}`);
     return fromGarmentWire(data);

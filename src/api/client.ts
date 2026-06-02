@@ -35,21 +35,21 @@ type ApiRequestOptions = RequestInit & {
   token?: string | null;
 };
 
-// 💡 [수정된 부분]: 공통으로 쓰이는 토큰 추출 로직 강화
+// 💡 [핵심 수정]: 토큰 파싱 안전성 강화 (sessionStorage 최우선)
 function getAccessToken(): string | null {
   try {
-    let token = "";
-    const savedUser = sessionStorage.getItem("user");
-    if (savedUser) {
-      const parsed = JSON.parse(savedUser);
-      token = parsed.accessToken || parsed.token || "";
+    let token = sessionStorage.getItem("accessToken");
+
+    if (!token) {
+      const savedUser = sessionStorage.getItem("user");
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        token = parsed.accessToken || parsed.token || "";
+      }
     }
 
     if (!token) {
-      token = sessionStorage.getItem("token") ||
-          sessionStorage.getItem("accessToken") ||
-          localStorage.getItem("token") ||
-          localStorage.getItem("accessToken") || "";
+      token = localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
     }
 
     return token ? token : null;
@@ -79,13 +79,13 @@ export async function apiRequest<T = unknown>(
   } = options;
 
   const finalHeaders = new Headers(headers);
-  const accessToken = token ?? (withAuth ? getAccessToken() : null);
 
-  if (withAuth && !accessToken) {
-    throw new ApiError("로그인이 필요합니다.", 401);
-  }
-
-  if (accessToken) {
+  // 💡 [핵심]: withAuth가 true일 때만 토큰을 찾고, 없으면 에러 던짐
+  if (withAuth) {
+    const accessToken = token ?? getAccessToken();
+    if (!accessToken) {
+      throw new ApiError("로그인이 필요합니다.", 401);
+    }
     finalHeaders.set("Authorization", `Bearer ${accessToken}`);
   }
 
