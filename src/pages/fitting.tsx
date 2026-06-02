@@ -38,11 +38,23 @@ const Fitting = () => {
     try {
       setIsLoading(true);
       const backendBaseUrl = "https://apivirtualtryon.p-e.kr";
+      // CORS 및 혼합 콘텐츠(Mixed Content) 방지를 위해 URL 정제
       const targetClothUrl = cloth.startsWith("http") ? cloth : backendBaseUrl + cloth;
-      const response = await fetch(targetClothUrl);
-      const blob = await response.blob();
-      const clothFile = new File([blob], "cloth.jpg", { type: "image/jpeg" });
 
+      // 현실적 방어 로직: 캡스톤 시연 중 외부 이미지 로딩 지연 방지를 위한 AbortController (10초 컷)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(targetClothUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) throw new Error("의상 이미지를 서버에서 불러오지 못했습니다.");
+
+      const blob = await response.blob();
+      const clothFile = new File([blob], "cloth.jpg", { type: blob.type || "image/jpeg" });
+
+      // 백엔드 Spring이 @RequestPart("personImage"), @RequestPart("clothImage")를 요구하므로
+      // 내부 api 함수(createTryonJob)가 이를 받아 FormData로 감싸서 POST 요청을 보내야 함
       const job = await createTryonJob({
         personImage: file,
         clothImage: clothFile,
@@ -52,10 +64,18 @@ const Fitting = () => {
       navigate("/result", {
         state: { tryonId: job.tryonId, userPreview: userPreviewUrl, clothType: selectedCategory, clothPreview: cloth }
       });
-    } catch (error) {
-      // ★ 에러 해결: error 변수 미사용 경고 방지를 위해 콘솔에 출력
+    } catch (error) { // TS에서 error는 기본적으로 unknown 타입
       console.error("서버 통신 오류:", error);
-      alert("서버 통신에 실패했습니다.");
+
+      // error가 실제 Error 객체인지 확인 (Type Guard)
+      const isAbortError = error instanceof Error && error.name === 'AbortError';
+
+      // 발표 시연 중 에러가 나더라도 당황하지 않도록 사용자 친화적 메시지 출력
+      alert(
+          isAbortError
+              ? "이미지 변환 시간이 초과되었습니다. 다시 시도해주세요."
+              : "서버 통신에 실패했습니다. (AI 서버 연결 상태를 확인해주세요.)"
+      );
     } finally {
       setIsLoading(false);
     }
