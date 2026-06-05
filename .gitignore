@@ -24,3 +24,14 @@ dist-ssr
 *.sw?
 .vercel
 .env
+.env.*
+!.env.example
+
+*.tsbuildinfo
+.eslintcache
+
+Thumbs.db
+desktop.ini
+
+test-images/
+temp-uploads/
